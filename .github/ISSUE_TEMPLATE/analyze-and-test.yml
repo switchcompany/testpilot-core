@@ -1,0 +1,91 @@
+name: "🧪 TestPilot Core — Analyze & Generate Tests"
+description: "Trigger backend architecture analysis, test auditing, and unit-test generation"
+title: "[TestPilot Core] {{ project_name }}"
+labels:
+  - testpilot-core
+  - automated-testing
+body:
+  - type: input
+    id: project_name
+    attributes:
+      label: Project name
+      description: Backend service or repository name.
+      placeholder: orders-service
+    validations:
+      required: true
+
+  - type: dropdown
+    id: mode
+    attributes:
+      label: Mode
+      description: Choose the scope of work.
+      options:
+        - Full project run
+        - Specific classes/files only
+        - Analyze only
+        - Analyze + Review existing tests
+    validations:
+      required: true
+
+  - type: textarea
+    id: target_classes
+    attributes:
+      label: Target classes / files
+      description: Required only for targeted mode. Provide one class name or file path per line.
+      placeholder: |
+        src/services/order_service.py
+        com.theswitchcompany.orders.OrderService
+        pkg/handler/order_handler.go
+
+  - type: input
+    id: coverage_target
+    attributes:
+      label: Coverage target (%)
+      description: Desired line coverage for the selected scope.
+      value: "90"
+      placeholder: "90"
+    validations:
+      required: true
+
+  - type: input
+    id: max_iterations
+    attributes:
+      label: Max iterations
+      description: Maximum number of generate/validate/coverage loops.
+      value: "5"
+      placeholder: "5"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: language
+    attributes:
+      label: Primary language
+      description: Optional hint. TestPilot Core will still auto-detect.
+      options:
+        - Auto-detect
+        - Java
+        - Kotlin
+        - Python
+        - Node.js / JavaScript
+        - TypeScript
+        - Go
+        - Rust
+        - C# / .NET
+        - Ruby
+        - PHP
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: options
+    attributes:
+      label: Options
+      description: Select any extra preferences.
+      options:
+        - label: Fix existing broken tests before generating new ones
+        - label: Generate per-class / per-file coverage breakdown
+        - label: Enable coverage rollback protection
+        - label: Include self-learning sync to central hub
+        - label: Exclude integration-only modules from coverage target
+        - label: Prefer targeted deterministic unit tests over framework-heavy slice tests

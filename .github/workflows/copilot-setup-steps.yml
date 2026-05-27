@@ -1,0 +1,116 @@
+name: "Copilot Setup Steps"
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - .github/copilot-setup-steps.yml
+      - .github/workflows/copilot-setup-steps.yml
+  pull_request:
+    paths:
+      - .github/copilot-setup-steps.yml
+      - .github/workflows/copilot-setup-steps.yml
+
+jobs:
+  copilot-setup-steps:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Verify runtimes and common build files
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          echo "=== TestPilot Core — Copilot Environment Verification ==="
+          echo "Repository: $GITHUB_REPOSITORY"
+          echo "Runner OS: $(uname -a)"
+          echo
+
+          report_cmd() {
+            local label="$1"
+            local cmd="$2"
+            if command -v "$cmd" >/dev/null 2>&1; then
+              echo "✅ ${label}: $($cmd --version 2>&1 | head -n 1)"
+            else
+              echo "ℹ️ ${label}: not installed"
+            fi
+          }
+
+          report_cmd "Python" python3
+          report_cmd "Node.js" node
+          report_cmd "npm" npm
+          report_cmd "Go" go
+          report_cmd "Rust" rustc
+          report_cmd ".NET" dotnet
+
+          if command -v java >/dev/null 2>&1; then
+            echo "✅ Java: $(java -version 2>&1 | head -n 1)"
+          else
+            echo "ℹ️ Java: not installed"
+          fi
+
+          if command -v mvn >/dev/null 2>&1; then
+            echo "✅ Maven: $(mvn -version 2>&1 | head -n 1)"
+          else
+            echo "ℹ️ Maven: not installed"
+          fi
+
+          if command -v gradle >/dev/null 2>&1; then
+            echo "✅ Gradle: $(gradle --version 2>&1 | head -n 1)"
+          else
+            echo "ℹ️ Gradle: not installed"
+          fi
+
+          if command -v bundle >/dev/null 2>&1; then
+            echo "✅ Bundler: $(bundle --version 2>&1 | head -n 1)"
+          else
+            echo "ℹ️ Bundler: not installed"
+          fi
+
+          if command -v php >/dev/null 2>&1; then
+            echo "✅ PHP: $(php --version 2>&1 | head -n 1)"
+          else
+            echo "ℹ️ PHP: not installed"
+          fi
+
+          echo
+          echo "=== Common Build File Detection ==="
+          files=(
+            pom.xml
+            build.gradle
+            build.gradle.kts
+            package.json
+            pyproject.toml
+            requirements.txt
+            setup.py
+            Pipfile
+            go.mod
+            Cargo.toml
+            Gemfile
+            composer.json
+          )
+
+          found_any=false
+          for file in "${files[@]}"; do
+            if find . -maxdepth 4 -name "$file" -print -quit | grep -q .; then
+              echo "✅ Found ${file}"
+              found_any=true
+            fi
+          done
+
+          if find . -maxdepth 4 \( -name "*.csproj" -o -name "*.sln" \) -print -quit | grep -q .; then
+            echo "✅ Found .NET solution/project file"
+            found_any=true
+          fi
+
+          if [ "$found_any" = false ]; then
+            echo "ℹ️ No common backend build files detected in the top-level scan"
+          fi
+
+          echo
+          echo "=== TestPilot Core environment verification complete ==="
