@@ -1,8 +1,8 @@
-name: "🧪 TestPilot Core — Analyze & Generate Tests"
-description: "Trigger backend architecture analysis, test auditing, and unit-test generation"
-title: "[TestPilot Core] {{ project_name }}"
+name: "🧪 Forge Core — Analyze & Generate Tests"
+description: "Trigger Forge Core backend architecture analysis, test auditing, and unit-test generation"
+title: "[Forge Core] {{ project_name }}"
 labels:
-  - testpilot-core
+  - forge-core
   - automated-testing
 body:
   - type: input
@@ -61,7 +61,7 @@ body:
     id: language
     attributes:
       label: Primary language
-      description: Optional hint. TestPilot Core will still auto-detect.
+      description: Optional hint. Forge Core will still auto-detect.
       options:
         - Auto-detect
         - Java

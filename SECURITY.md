@@ -8,7 +8,7 @@
 
 ## Security Boundaries
 
-TestPilot Core is designed to operate as a **sandboxed, prompt-driven backend test agent**.
+Forge Core is designed to operate as a **sandboxed, prompt-driven backend test agent**.
 
 ### Security guarantees
 - It is intended to work only on **test code, test fixtures, test resources, and test-only configuration**.
@@ -37,7 +37,7 @@ TestPilot Core is designed to operate as a **sandboxed, prompt-driven backend te
 
 ## External Access
 
-TestPilot Core should be configured to run without requiring external API access.
+Forge Core should be configured to run without requiring external API access.
 If a host environment provides network access, the agent should still avoid using it unless explicitly approved and required for repository-owned tooling.
 
 ## Credential Storage
@@ -55,7 +55,7 @@ When contributing prompts or learnings:
 
 ## Reporting a Vulnerability
 
-If you discover a security issue in TestPilot Core:
+If you discover a security issue in Forge Core:
 1. **Do not** open a public issue containing sensitive details.
 2. Report it privately through your organization’s secure disclosure channel or GitHub private security advisory process.
 3. Include:

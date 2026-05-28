@@ -1,4 +1,4 @@
-# 🔬 TestPilot Core — AI Backend Test Generation Agent
+# 🔥 Forge Core — AI Backend Test Generation Agent
 
 > **Drop-in agentic workflow that auto-generates unit tests for any backend project, in any language.**
 > Zero production code changes. 90%+ coverage. Self-learning.
@@ -11,10 +11,10 @@
 
 ## 🎯 What It Does
 
-TestPilot Core is an **AI-powered test engineer** that analyzes your backend codebase and generates comprehensive unit tests — automatically. It understands your architecture, detects your tech stack, writes idiomatic tests, and iterates until coverage targets are met.
+Forge Core is an **AI-powered test engineer** that analyzes your backend codebase and generates comprehensive unit tests — automatically. It understands your architecture, detects your tech stack, writes idiomatic tests, and iterates until coverage targets are met.
 
 ```
-Your Backend Project + TestPilot Core = 90%+ Test Coverage
+Your Backend Project + Forge Core = 90%+ Test Coverage
 ```
 
 ### Key Capabilities
@@ -24,20 +24,25 @@ Your Backend Project + TestPilot Core = 90%+ Test Coverage
 | 🔍 **Auto Stack Detection** | Detects language, framework, test tools, and coverage system automatically |
 | 🧠 **Deep Architecture Analysis** | Understands HLD/LLD, dependency chains, DI containers, and data flows |
 | ✍️ **Intelligent Test Generation** | Writes idiomatic tests using your project's existing patterns and conventions |
-| 🔄 **Iterative Coverage Loop** | Runs up to 5 iterations, each time targeting the biggest coverage gaps |
+| 🔄 **Iterative Coverage Loop** | Runs up to 10 iterations, each time targeting the biggest coverage gaps |
 | 🛡️ **Rollback Protection** | Never allows coverage to drop — automatically reverts harmful changes |
 | 📚 **Self-Learning** | Captures new patterns after each run, making itself smarter for every future project |
 | 🎯 **Targeted Mode** | Generate tests for specific classes only (with dependency mocking) |
 | 🏗️ **Monorepo Support** | Works with multi-module projects (Gradle, npm workspaces, etc.) |
+| 🎯 **Coverage Exclusion Detection** | Detects excluded packages before generating tests — zero wasted effort |
+| 🌊 **Cascade Coverage** | Maps call chains to find high-cascade test targets for maximum coverage ROI |
+| 📊 **Coverage Impact Predictor** | Estimates which tests will cover the most lines before writing them |
+| ⚡ **Auto Compile-Fix** | Autonomously fixes compilation errors — zero human intervention needed |
+| 🏢 **Enterprise Pattern Library** | Structured, searchable patterns that grow with every engagement |
 
 ---
 
 ## 🚀 Quick Start
 
-### 1. Clone TestPilot Core (once per team)
+### 1. Clone Forge Core (once per team)
 ```bash
-git clone https://github.com/switchcompany/testpilot-core.git
-cd testpilot-core
+git clone https://github.com/switchcompany/forge-core.git
+cd forge-core
 ```
 
 ### 2. Set Up Your Project
@@ -84,21 +89,21 @@ Create an issue using the "Analyze & Test" template → Copilot agent picks it u
 ## 🔄 How It Works
 
 ```
-┌──────────────────────────────────────────────────────────────────┐
-│                    TestPilot Core — Workflow                      │
-│                                                                  │
-│  ┌─────────┐   ┌─────────┐   ┌──────────┐   ┌───────────────┐  │
-│  │ Load    │──▶│ Detect  │──▶│ Analyze  │──▶│ Baseline      │  │
-│  │Learnings│   │ Stack   │   │ Project  │   │ Coverage      │  │
-│  └─────────┘   └─────────┘   └──────────┘   └───────┬───────┘  │
-│                                                       │          │
-│  ┌─────────┐   ┌─────────────────────────────────────┐│          │
-│  │ Self-   │◀──│        Iteration Loop (×5)          ││          │
-│  │ Learn   │   │  Fix → Generate → Run → Rollback    │◀┘         │
-│  └─────────┘   └─────────────────────────────────────┘           │
-│                                                                  │
-│  Output: Tests + Coverage Report + Learnings                     │
-└──────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────┐
+│                      Forge Core — Workflow                           │
+│                                                                      │
+│  ┌─────────┐  ┌─────────┐  ┌──────────┐  ┌──────────┐  ┌────────┐  │
+│  │ Load    │─▶│ Detect  │─▶│ Exclusion│─▶│ Analyze  │─▶│Cascade │  │
+│  │Learnings│  │ Stack   │  │  Scan    │  │ Project  │  │ Graph  │  │
+│  └─────────┘  └─────────┘  └──────────┘  └──────────┘  └───┬────┘  │
+│                                                              │       │
+│  ┌─────────┐  ┌──────────────────────────────────────┐      │       │
+│  │ Self-   │◀─│     Iteration Loop (×10)             │◀─────┘       │
+│  │ Learn   │  │ Fix → Generate → Auto-Fix → Rollback │              │
+│  └─────────┘  └──────────────────────────────────────┘              │
+│                                                                      │
+│  Output: Tests + Coverage Report + Cascade Map + Learnings           │
+└──────────────────────────────────────────────────────────────────────┘
 ```
 
 ### Phase Breakdown
@@ -108,10 +113,12 @@ Create an issue using the "Analyze & Test" template → Copilot agent picks it u
 | **-1** | Load learnings from central hub + local | Pattern library |
 | **0** | User confirmation (full/targeted/analyze) | Mode selection |
 | **1** | Detect tech stack from build files | Stack profile |
+| **1.5** | Scan coverage exclusions | Exclusion map |
 | **2** | Deep project analysis (HLD/LLD/flows) | Architecture map |
+| **2.5** | Build dependency graph & cascade map | Cascade coverage targets |
 | **3** | Scan & run existing tests, measure baseline | Baseline coverage % |
 | **3.5** | Fix broken tests (10+ battle-tested patterns) | Fixed test suite |
-| **4** | Iterative test generation (up to 5 rounds) | New test files |
+| **4** | Iterative test generation with auto compile-fix (up to 10 rounds) | New test files |
 | **5** | Final report (before/after, gaps, files) | Coverage report |
 | **6** | Capture new patterns to LEARNINGS.md | Updated knowledge |
 
@@ -146,7 +153,7 @@ These grow automatically as the agent runs on more projects.
 ## 📁 Repository Structure
 
 ```
-testpilot-core/
+forge-core/
 ├── .github/
 │   ├── copilot-instructions.md          # Agent brain — 500+ lines of instructions
 │   ├── copilot-setup-steps.yml          # Environment verification
@@ -156,7 +163,9 @@ testpilot-core/
 │   └── prompts/
 │       ├── full-workflow.prompt.md      # Main orchestrator
 │       ├── detect-tech-stack.prompt.md  # Stack detection playbook
+│       ├── coverage-exclusion-scan.prompt.md  # Coverage exclusion scan
 │       ├── analyze-project.prompt.md    # Architecture analysis
+│       ├── dependency-graph.prompt.md   # Cascade dependency graph
 │       ├── analyze-existing-tests.prompt.md  # Test audit
 │       ├── generate-coverage-report.prompt.md  # Coverage tools
 │       ├── write-unit-tests.prompt.md   # Test writing playbook
@@ -193,6 +202,19 @@ testpilot-core/
 
 **Patterns Discovered:** 11 (cached settings, async mocking, ASGI testing, DB isolation, lifespan override, fallback behavior testing, NLP model mocking)
 
+### Assembler-Service — Enterprise E-Commerce Backend (Kotlin/Ktor)
+
+| Metric | Before | After | Delta |
+|--------|--------|-------|-------|
+| **Line Coverage** | 35.1% | 36.3% | +1.2% |
+| **Method Coverage** | 44.2% | 48.2% | +4.0% |
+| **Test Files** | 60 | 69 | +9 |
+| **Test Cases** | 269 | 416 | +147 |
+| **Patterns Discovered** | — | 9 | — |
+| **Production Files Modified** | — | 0 | ✅ |
+
+**Key Achievement:** Enterprise-grade Kotlin codebase with 209 source files, 15K+ lines, Koin DI, MockK, complex adapter patterns. Discovered 9 new reusable patterns.
+
 ---
 
 ## 🏢 Enterprise Features
@@ -213,6 +235,6 @@ MIT © 2025 [TheSwitchCompany](https://theswitchcompany.online)
 ---
 
 <p align="center">
-  <strong>TestPilot Core</strong> — Part of the <a href="https://theswitchcompany.online">TheSwitchCompany</a> AI Agent Suite<br/>
-  <em>TestPilot Core · TestPilot UI · More agents coming soon</em>
+  <strong>Forge Core</strong> — Part of the <a href="https://theswitchcompany.online">TheSwitchCompany</a> AI Agent Suite<br/>
+  <em>Forge Core · Forge UI · More agents coming soon</em>
 </p>

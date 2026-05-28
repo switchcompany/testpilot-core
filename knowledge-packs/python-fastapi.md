@@ -1,6 +1,6 @@
 # Knowledge Pack — Python / FastAPI
 
-Use this pack when TestPilot Core detects a Python backend built with FastAPI, Starlette, or a similar ASGI stack.
+Use this pack when Forge Core detects a Python backend built with FastAPI, Starlette, or a similar ASGI stack.
 
 ## Mission
 Generate deterministic unit and lightweight service/route tests without modifying production code.

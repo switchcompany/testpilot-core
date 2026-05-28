@@ -26,7 +26,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          echo "=== TestPilot Core — Copilot Environment Verification ==="
+          echo "=== Forge Core — Copilot Environment Verification ==="
           echo "Repository: $GITHUB_REPOSITORY"
           echo "Runner OS: $(uname -a)"
           echo
@@ -113,4 +113,4 @@ jobs:
           fi
 
           echo
-          echo "=== TestPilot Core environment verification complete ==="
+          echo "=== Forge Core environment verification complete ==="

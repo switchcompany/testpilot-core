@@ -1,4 +1,4 @@
-# TestPilot Core — Product Overview
+# Forge Core — Product Overview
 
 ## The Problem
 
@@ -10,7 +10,7 @@ Backend teams spend **30-40% of development time** writing and maintaining unit 
 
 ## The Solution
 
-**TestPilot Core** is an AI agent that acts as a **dedicated test engineer on your team**. Drop it into any backend project, and it:
+**Forge Core** is an AI agent that acts as a **dedicated test engineer on your team**. Drop it into any backend project, and it:
 
 1. **Analyzes** your architecture (HLD, LLD, dependency chains)
 2. **Generates** idiomatic unit tests in your project's style
@@ -40,7 +40,7 @@ Backend teams spend **30-40% of development time** writing and maintaining unit 
 - **Compliance ready**: Coverage reports for audit requirements
 
 ### For CTOs
-- **ROI**: A single test engineer costs $120K-180K/year. TestPilot Core delivers comparable output at a fraction of the cost
+- **ROI**: A single test engineer costs $120K-180K/year. Forge Core delivers comparable output at a fraction of the cost
 - **Scalability**: Works across all your backend services simultaneously
 - **Vendor-agnostic**: Supports 9+ languages — no stack lock-in
 - **Data privacy**: Runs in your environment, nothing leaves your infrastructure
@@ -64,14 +64,14 @@ Backend teams spend **30-40% of development time** writing and maintaining unit 
 
 ```
   ┌─────────────┐     ┌──────────────┐     ┌─────────────┐
-  │  Your Repo  │────▶│  TestPilot   │────▶│  PR with    │
+  │  Your Repo  │────▶│    Forge     │────▶│  PR with    │
   │  (any lang) │     │  Core Agent  │     │  New Tests  │
   └─────────────┘     └──────┬───────┘     └─────────────┘
                              │
                     ┌────────┼────────┐
                     ▼        ▼        ▼
               ┌─────────┐┌────────┐┌──────────┐
-              │ Analyze ││Generate││ Coverage  │
+              │ Analyze ││Generate││ Coverage │
               │ & Learn ││ Tests  ││ Report   │
               └─────────┘└────────┘└──────────┘
 ```
@@ -81,13 +81,15 @@ Backend teams spend **30-40% of development time** writing and maintaining unit 
 | # | Phase | Duration | Output |
 |---|-------|----------|--------|
 | 1 | Stack Detection | ~30s | Language, framework, test tools identified |
+| 1.5 | Exclusion Scan | ~15s | Coverage exclusion map and included packages |
 | 2 | Architecture Analysis | ~2min | HLD/LLD, dependency map, flow documentation |
+| 2.5 | Cascade Analysis | ~1min | Dependency graph, cascade map, Tier 1/2/3 targets |
 | 3 | Existing Test Audit | ~1min | Baseline coverage, gap analysis, quality score |
-| 4 | Test Generation (iterative) | ~10-20min | New test files with 90%+ coverage |
+| 4 | Test Generation (iterative) | ~15-25min | New test files with 90%+ coverage |
 | 5 | Final Report | ~30s | Before/after metrics, files created, remaining gaps |
 | 6 | Knowledge Capture | ~30s | New patterns saved for future projects |
 
-**Total time: ~15-25 minutes** (vs. 2-4 weeks manually)
+**Total time: ~20-30 minutes** (vs. 2-4 weeks manually)
 
 ---
 
@@ -103,8 +105,8 @@ Backend teams spend **30-40% of development time** writing and maintaining unit 
 
 **Results:**
 
-| Metric | Before TestPilot | After TestPilot |
-|--------|-----------------|-----------------|
+| Metric | Before Forge Core | After Forge Core |
+|--------|-------------------|------------------|
 | Line Coverage | 0% | 89% |
 | Test Files | 0 | 8 |
 | Test Cases | 0 | 145 |
@@ -119,23 +121,42 @@ Backend teams spend **30-40% of development time** writing and maintaining unit 
 - Pipeline integration tests (classify → notify → save flow)
 - Configuration tests (env vars, defaults, caching)
 
+### Case Study: Enterprise E-Commerce Backend (Kotlin/Ktor)
+
+**Project Profile:**
+- Language: Kotlin 2.0
+- Framework: Ktor + Koin DI
+- Components: REST API, adapters, mappers, services, Redis/Dapr clients
+- Lines of code: ~15,000
+- Existing test coverage: 35.1% line coverage
+
+**Results:**
+
+| Metric | Before Forge Core | After Forge Core |
+|--------|-------------------|------------------|
+| Line Coverage | 35.1% | 36.3% |
+| Method Coverage | 44.2% | 48.2% |
+| Test Files | 60 | 69 |
+| Test Cases | 269 | 416 |
+| Patterns Discovered | — | 9 |
+| Execution Time | — | ~45 minutes |
+
 ---
 
 ## Pricing
 
 | Plan | Price | What's Included |
 |------|-------|----------------|
-| **Starter** | Free | 1 project, 3 runs/month, community support |
-| **Professional** | $29/mo | 5 projects, unlimited runs, email support, all knowledge packs |
-| **Team** | $99/mo | 20 projects, priority support, custom knowledge packs, team analytics |
-| **Enterprise** | Custom | Unlimited projects, dedicated support, on-prem deployment, SLA |
+| **Starter** | Free | 1 repo, 500 tests/month, Core OR UI |
+| **Pro** | $49/mo per repo | Unlimited tests, both agents, CI/CD, cross-project learning |
+| **Enterprise** | Custom | Unlimited repos, self-hosted, SSO, SLA, org-wide learning |
 
 ---
 
 ## Getting Started
 
 1. **Sign up** at [theswitchcompany.online](https://theswitchcompany.online)
-2. **Install** TestPilot Core in your repository
+2. **Install** Forge Core in your repository
 3. **Run** your first analysis
 4. **Review** the generated tests and coverage report
 5. **Merge** — tests are production-ready
@@ -145,7 +166,7 @@ Backend teams spend **30-40% of development time** writing and maintaining unit 
 ## FAQ
 
 **Q: Does it work with monorepos?**
-A: Yes. TestPilot Core detects monorepo structures and can target specific modules.
+A: Yes. Forge Core detects monorepo structures and can target specific modules.
 
 **Q: Will it break my existing tests?**
 A: No. It never deletes existing tests and has rollback protection if coverage drops.
@@ -154,7 +175,7 @@ A: No. It never deletes existing tests and has rollback protection if coverage d
 A: It runs locally in your environment via GitHub Copilot. No code leaves your infrastructure.
 
 **Q: How is this different from Copilot's built-in test generation?**
-A: Copilot generates tests for individual functions. TestPilot Core understands your entire architecture, iterates for coverage, handles complex mocking, and learns from every project.
+A: Copilot generates tests for individual functions. Forge Core understands your entire architecture, iterates for coverage, handles complex mocking, and learns from every project.
 
 **Q: Can it generate integration tests?**
 A: The current focus is unit tests. Integration and E2E test generation is on the roadmap.
@@ -163,5 +184,5 @@ A: The current focus is unit tests. Integration and E2E test generation is on th
 
 <p align="center">
   <strong>Ready to automate your backend testing?</strong><br/>
-  <a href="https://theswitchcompany.online/contact?product=testpilot">Get Started →</a>
+  <a href="https://theswitchcompany.online/contact?product=forge">Get Started →</a>
 </p>

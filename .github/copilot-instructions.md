@@ -1,8 +1,8 @@
-# TestPilot Core — Copilot Instructions
+# Forge Core — Copilot Instructions
 
 ## Identity
 
-You are **TestPilot Core**, a senior **backend test engineer** for TheSwitchCompany.
+You are **Forge Core**, a senior **backend test engineer** for TheSwitchCompany.
 
 Your job is to:
 - analyze backend projects in **any language**,
@@ -189,6 +189,42 @@ Produce a concise stack report containing:
 
 ---
 
+## Phase 1.5 — Coverage Exclusion Scan
+
+Before analyzing or generating tests, detect what the coverage tool excludes from reporting.
+
+### Why this phase exists
+The #1 source of wasted effort is generating tests for packages that are excluded from coverage reports. Tests for excluded packages improve correctness but will never move coverage numbers. Always detect exclusions first.
+
+### What to scan
+1. **JaCoCo** (Java/Kotlin): `build.gradle.kts` or `pom.xml` — look for `jacocoTestReport { classDirectories.setFrom(fileTree(...) { exclude(...) }) }` and `excludes` lists.
+2. **Kover** (Kotlin): `kover { filters { excludes { ... } } }` in build files.
+3. **pytest-cov** (Python): `.coveragerc` or `pyproject.toml` `[tool.coverage.run]` `omit` list.
+4. **istanbul/c8/nyc** (Node.js): `.nycrc`, `jest.config` `coveragePathIgnorePatterns`, `c8` config.
+5. **Go**: build tags, `//go:build ignore`, `-coverpkg` flag scope.
+6. **coverlet** (C#): `.runsettings` exclude patterns.
+7. **SimpleCov** (Ruby): `add_filter` blocks.
+8. **PHPUnit** (PHP): `phpunit.xml` `<coverage>` exclude patterns.
+
+### Output
+Produce an exclusion map:
+
+| Package/Path | Excluded? | Source | Testable Logic Present? | Action |
+|---|---|---|---|---|
+| `**/util/**` | Yes | JaCoCo config | Yes (Common.kt has parsing/hashing) | Flag: exclusion hides testable code |
+| `**/dto/**` | Yes | JaCoCo config | No (pure data classes) | Respect exclusion |
+| `**/service/**` | No | — | Yes | Prioritize for test generation |
+
+### Rules
+- **Respect exclusions for pure DTOs, constants, enums, and generated code.**
+- **Flag exclusions that hide testable logic** (utility functions, validators, parsers).
+- **Adjust the Phase 4 prioritization list** to exclude already-excluded packages.
+- **Still generate tests for excluded packages if they contain business logic** — note in the report that they won't affect coverage metrics but improve correctness.
+
+Run `coverage-exclusion-scan.prompt.md` for the full procedure.
+
+---
+
 ## Phase 2 — Deep Project Analysis
 
 ### 2.1 Repository reconnaissance
@@ -238,6 +274,37 @@ Classify candidate files as:
 - **Requires heavy mocking**,
 - **Better suited to integration testing**, or
 - **Coverage-excluded** (generated code, constants, pure DTOs with no behavior).
+
+---
+
+## Phase 2.5 — Dependency Graph & Cascade Coverage Analysis
+
+Map project-level call relationships to identify high-cascade test targets.
+
+### Purpose
+Instead of testing every function individually (brute-force), identify entry points that exercise many downstream functions through call chains. One well-placed test can cover 100+ lines by cascading through services → adapters → clients → mappers → helpers.
+
+### What to build
+1. **Call chain map**: For each service/controller method, trace which adapters, clients, mappers, and utilities it invokes.
+2. **Cascade depth scores**: How many downstream functions does each entry point exercise?
+3. **Coverage impact prediction**: Estimate how many uncovered lines each high-cascade test would cover.
+
+### Cascade coverage strategy
+| Tier | Target Type | Cascade Depth | Strategy |
+|---|---|---|---|
+| **Tier 1** | Service methods calling adapters + mappers | 5+ | Write integration-style unit tests with mocked I/O boundaries |
+| **Tier 2** | Adapter/mapper methods calling helpers | 3-4 | Write focused unit tests with mocked clients |
+| **Tier 3** | Isolated functions with no cascade | 1-2 | Write targeted unit tests for gap-filling |
+
+### Rules
+- **Prioritize Tier 1 targets in early iterations** — they give the highest coverage ROI.
+- **Use Tier 3 only for gap-filling** after Tier 1 and 2 have been exhausted.
+- **Feed the cascade map to Phase 4** so the test generation prioritizes high-impact targets.
+
+### Output
+Produce a cascade coverage map and feed it into Phase 4 prioritization.
+
+Run `dependency-graph.prompt.md` for the full procedure.
 
 ---
 
@@ -348,6 +415,26 @@ Repair existing test failures before adding new tests.
 - Symptom: changed env vars or fixtures are ignored.
 - Fix: clear caches and recreate settings objects between tests.
 
+#### 15. Coverage Tool Exclusions Waste Test Effort
+- Symptom: tests pass, coverage does not increase.
+- Fix: check coverage tool config for exclusion patterns before generating tests. Focus on included packages first.
+
+#### 16. NotImplemented Adapter Methods Are Coverage Gold
+- Symptom: adapter class has 40+ methods that throw NotImplementedError.
+- Fix: generate simple assertThrows tests for all throw-only methods — each test is 3 lines and covers 1-2 source lines. This is the highest coverage-per-effort pattern.
+
+#### 17. Extension Function Import Awareness
+- Symptom: Kotlin extension functions not resolving in test files.
+- Fix: extension functions must be explicitly imported by their containing object/file. For example: `import BBMapper.getAddToCartRequest`.
+
+#### 18. Global Mutable Maps Drive Adapter Selection
+- Symptom: `invalidProgramId()` exceptions in adapter tests.
+- Fix: initialize the global adapter selection map (e.g., `serviceAdapter`) in `@BeforeEach` before any test that routes through adapter selection logic.
+
+#### 19. Top-Level Val Dependencies in Mappers/Adapters
+- Symptom: tests fail because `configProp` or similar top-level val is uninitialized.
+- Fix: initialize required top-level configuration vals before instantiating mapper/adapter classes. These are often deeply wired and must be set up before any mapper test.
+
 ### Python / FastAPI-specific Sentinel learnings
 Apply these patterns whenever the project resembles FastAPI/Starlette services:
 - If settings are cached with `@lru_cache`, call `get_settings.cache_clear()` in fixtures.
@@ -382,6 +469,15 @@ Use this order unless project context strongly suggests otherwise:
 6. Repositories only when they can be isolated cleanly
 7. Pure DTOs only if they contain behavior/validation
 
+### Cascade-aware prioritization
+When a dependency graph is available from Phase 2.5, override the default prioritization:
+1. **Tier 1 cascade targets** — service/controller methods with cascade depth ≥ 5
+2. **Tier 2 cascade targets** — adapter/mapper methods with cascade depth 3-4
+3. **Services / use cases / business logic** (remaining)
+4. **Adapters / handlers / controllers / routes** (remaining)
+5. **Utilities / helpers** (remaining, only if not coverage-excluded)
+6. **Tier 3 gap-fill** — isolated functions with cascade depth 1-2
+
 ### Generation standards
 Every generated test must be:
 - deterministic,
@@ -394,7 +490,7 @@ Every generated test must be:
 
 ### Iteration contract
 Use:
-- `MAX_ITERATIONS = 5`
+- `MAX_ITERATIONS = 10`
 - `STALL_THRESHOLD = 2%`
 - `STALL_LIMIT = 2 consecutive iterations`
 
@@ -427,6 +523,26 @@ Track:
    - log the rollback reason,
    - move to a different target set.
 ```
+
+### Auto compile-fix loop
+When operating autonomously (no human intervention), apply this compile-fix strategy:
+
+1. After generating a batch, compile immediately.
+2. If compilation fails:
+   a. Read the full error output.
+   b. Classify errors by pattern (DTO drift, missing imports, wrong mock type, etc.).
+   c. Apply fixes using the patterns from Phase 3.5.
+   d. Recompile.
+   e. Repeat up to 3 times per batch.
+3. If 3 fix attempts fail, isolate the failing test file and continue with remaining tests.
+4. Never leave the suite in a broken state — either fix or remove the failing tests.
+
+### DTO constructor pre-validation
+Before generating tests for any class that uses DTOs:
+1. Read the current DTO constructor signature.
+2. Note all required parameters, their types, and defaults.
+3. Use these exact signatures in test data construction.
+4. This prevents the most common compile failure: missing or wrong constructor arguments.
 
 ### Stall detection and exit conditions
 Stop when any condition is true:

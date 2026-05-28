@@ -186,3 +186,82 @@ Before accepting a batch, confirm:
 - fixed time sources used,
 - DTO builders aligned to current model,
 - coverage tool behavior understood if inline functions are involved.
+
+---
+
+## 15. JaCoCo coverage exclusion detection
+Before generating tests, always scan `build.gradle.kts` or `build.gradle` for JaCoCo exclusion patterns.
+
+Common exclusion locations:
+```kotlin
+tasks.jacocoTestReport {
+    classDirectories.setFrom(fileTree("build/classes") {
+        exclude("**/config/**", "**/dto/**", "**/model/**", "**/exception/**", "**/util/**")
+    })
+}
+```
+
+Tests for excluded packages improve correctness but won't move coverage metrics. Prioritize included packages first.
+
+---
+
+## 16. NotImplemented adapter testing
+When adapter classes implement interfaces but throw `NotImplementedError` for most methods:
+
+```kotlin
+@Test
+fun `method throws NotImplementedError`() {
+    assertThrows<NotImplementedError> { adapter.someMethod(params) }
+}
+```
+
+Each test is 3 lines, covers 1-2 source lines. Highest coverage-per-effort pattern for large adapter interfaces.
+
+---
+
+## 17. Extension function imports
+Kotlin extension functions in companion objects or top-level files must be imported explicitly:
+
+```kotlin
+import com.example.mapper.BBMapper.getAddToCartRequest
+import com.example.mapper.BBMapper.formatPrice
+```
+
+The receiver type determines which overload resolves.
+
+---
+
+## 18. Global mutable adapter maps
+Enterprise projects often use a global mutable map to route requests to adapters:
+
+```kotlin
+var serviceAdapter: HashMap<String, NCAdapter> = HashMap()
+```
+
+Tests must initialize this map in `@BeforeEach`. Forgetting causes `invalidProgramId()` exceptions.
+
+---
+
+## 19. Top-level val configuration
+Mappers and adapters often depend on a top-level val like `val configProp = ConfigProps.configProp`. Tests must ensure config is set up before importing mapper/adapter classes.
+
+---
+
+## 20. Cascade coverage strategy
+Prefer cascade testing on enterprise services:
+- Test `CartService.getCart()` instead of each helper individually
+- One service test cascades through Adapter → Client → Mapper → helpers
+- Use Tier 1/2/3 prioritization from the dependency graph
+
+---
+
+## 21. Kotlin/Ktor enterprise completion checklist
+Before accepting a batch on enterprise Kotlin projects:
+- JaCoCo exclusions checked and respected,
+- DTO constructors verified against current production signatures,
+- Extension function imports correct,
+- Global mutable state initialized in `@BeforeEach`,
+- Top-level config vals set up before class loading,
+- Koin started with required bindings even for throw-only tests,
+- NotImplemented patterns used for interface coverage,
+- Cascade coverage targets prioritized over individual function tests.

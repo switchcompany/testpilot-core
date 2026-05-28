@@ -1,6 +1,6 @@
-# Contributing to TestPilot Core
+# Contributing to Forge Core
 
-Thank you for helping improve TestPilot Core.
+Thank you for helping improve Forge Core.
 
 ## What to contribute
 We welcome contributions in four main areas:
@@ -110,4 +110,4 @@ Helpful PR descriptions include:
 - screenshots or sample output where relevant,
 - any follow-up work still needed.
 
-Thanks for helping make TestPilot Core sharper, safer, and more effective.
+Thanks for helping make Forge Core sharper, safer, and more effective.

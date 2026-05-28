@@ -8,7 +8,7 @@ NC='\033[0m'
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CENTRAL_PATH="$SCRIPT_DIR"
 
-printf "\n🔄 TestPilot Core — Update\n"
+printf "\n🔄 Forge Core — Update\n"
 printf "====================================\n\n"
 
 if [[ -d "$CENTRAL_PATH/.git" ]]; then

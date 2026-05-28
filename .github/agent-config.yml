@@ -1,6 +1,7 @@
-# TestPilot Core central configuration
+# Forge Core central configuration
 # This file is copied into target repositories by setup.sh.
-# The target copy points back to the shared TestPilot Core hub so that
+# You are **Forge Core**
+# The target copy points back to the shared Forge Core hub so that
 # LEARNINGS.md and knowledge packs can be reused across projects.
 
 central_agent_path: "/Users/sarthakdureja/testpilot-core"

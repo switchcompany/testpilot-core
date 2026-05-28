@@ -1,6 +1,6 @@
 ---
 mode: agent
-description: "Capture new backend testing learnings, deduplicate them, append safely, and sync to the central TestPilot Core hub"
+description: "Capture new backend testing learnings, deduplicate them, append safely, and sync to the central Forge Core hub"
 tools: ["bash", "glob", "grep", "view", "edit"]
 ---
 
@@ -60,6 +60,29 @@ Use this shape:
 - ...
 ```
 
+## Step 4.5 — Enterprise Pattern Library
+Structure each learning as a searchable pattern entry when the pattern is significant enough:
+
+### Pattern format
+```
+#### [CATEGORY-NNN] Pattern Title
+- **Stack:** Kotlin/Ktor, Python/FastAPI, Java/Spring, etc.
+- **Category:** DTO-drift | mock-placement | DI-cleanup | coverage-tool | async-harness | cascade-coverage | exclusion-detection
+- **Severity:** high | medium | low
+- **Symptom:** What goes wrong
+- **Root Cause:** Why it happens
+- **Fix:** How to resolve it
+- **Prevention:** How Forge Core avoids it in future runs
+- **Discovered:** Project name, date
+```
+
+### Cross-project pattern matching
+When loading learnings in Phase -1:
+1. Filter patterns by the detected stack.
+2. Prioritize high-severity patterns.
+3. Pre-load relevant fix patterns into Phase 3.5 and Phase 5.
+4. Track pattern hit rates — patterns that fire on every project are "universal", stack-specific ones are "conditional".
+
 ## Step 5 — Sync to central hub
 Read `.github/agent-config.yml`.
 If `central_agent_path` exists:
@@ -72,6 +95,8 @@ If a new durable pattern was discovered:
 - update `.github/copilot-instructions.md`,
 - update `fix-broken-tests.prompt.md`,
 - update `write-unit-tests.prompt.md`,
+- update `coverage-exclusion-scan.prompt.md` if new exclusion patterns were found,
+- update `dependency-graph.prompt.md` if new cascade patterns were found,
 - update or create a relevant knowledge pack.
 
 ## Step 7 — Report summary

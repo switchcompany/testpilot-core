@@ -100,6 +100,26 @@ Run the project’s existing test/compile command and capture:
 **Symptom:** test compiles but fails because it asserts outdated or incidental behavior.
 **Fix:** re-read production behavior, update assertions to actual contract, not implementation noise.
 
+### Pattern 16 — Coverage Exclusion Mismatch
+**Symptom:** tests pass, but coverage numbers don't change.
+**Fix:** the target package may be excluded from coverage reporting. Check the exclusion map from Phase 1.5. Redirect effort to included packages.
+
+### Pattern 17 — NotImplemented Method Pattern
+**Symptom:** adapter/interface methods throw NotImplementedError/UnsupportedOperationException.
+**Fix:** generate simple `assertThrows` tests for all throw-only methods. Each test covers 1-2 source lines with minimal effort. This is the highest coverage-per-effort pattern.
+
+### Pattern 18 — Extension Function Resolution
+**Symptom:** Kotlin extension functions not found or wrong overload resolved.
+**Fix:** import extension functions explicitly by their containing file/object. Check the receiver type to ensure the correct overload is used.
+
+### Pattern 19 — Global Mutable State for Routing
+**Symptom:** adapter selection throws "invalid program" or "not found" errors in tests.
+**Fix:** initialize global routing/selection maps (e.g., `serviceAdapter`, `routeRegistry`) in `@BeforeEach` before tests that depend on adapter resolution.
+
+### Pattern 20 — Top-Level Val Configuration Dependencies
+**Symptom:** mapper/adapter tests fail with uninitialized config.
+**Fix:** top-level `val configProp = ConfigProps.configProp` or similar must be initialized before any test in that module. Set up config in a shared test fixture or `@BeforeAll`.
+
 ---
 
 ## Step 3 — Apply fixes in safe batches

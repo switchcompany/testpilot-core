@@ -9,7 +9,7 @@ NC='\033[0m'
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CENTRAL_PATH="$SCRIPT_DIR"
 
-printf "\n🧪 TestPilot Core — Setup\n"
+printf "\n🧪 Forge Core — Setup\n"
 printf "====================================\n\n"
 printf "Central hub: ${GREEN}%s${NC}\n\n" "$CENTRAL_PATH"
 
@@ -26,7 +26,7 @@ if [[ ! -d "$PROJECT_PATH" ]]; then
   exit 1
 fi
 
-printf "Setting up TestPilot Core in ${GREEN}%s${NC}\n\n" "$PROJECT_PATH"
+printf "Setting up Forge Core in ${GREEN}%s${NC}\n\n" "$PROJECT_PATH"
 
 mkdir -p \
   "$PROJECT_PATH/.github/prompts" \
@@ -77,7 +77,7 @@ for line in text.splitlines():
 config_path.write_text("\n".join(lines) + "\n")
 PY
 
-printf "\n${GREEN}✅ TestPilot Core files installed${NC}\n"
+printf "\n${GREEN}✅ Forge Core files installed${NC}\n"
 printf "${GREEN}✅ Central path configured${NC}\n"
 printf "${GREEN}✅ Knowledge packs synced${NC}\n"
 

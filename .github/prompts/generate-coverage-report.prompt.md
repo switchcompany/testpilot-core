@@ -148,6 +148,12 @@ Extract:
 - per-class breakdown for targets,
 - top uncovered files with feasible test value.
 
+### Exclusion-aware parsing
+When an exclusion map is available from Phase 1.5:
+- report coverage for included packages only in the primary metrics,
+- report excluded package coverage separately as "correctness coverage" (does not affect primary metrics),
+- flag any excluded packages where tests were generated for correctness purposes.
+
 ---
 
 ## Step 6 — Targeted mode parsing

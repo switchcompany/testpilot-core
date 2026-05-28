@@ -1,13 +1,13 @@
-# TestPilot Core — Architecture
+# Forge Core — Architecture
 
 ## System Overview
 
-TestPilot Core operates as a **3-layer architecture**: a central knowledge hub, per-project agent copies, and the Copilot runtime.
+Forge Core operates as a **3-layer architecture**: a central knowledge hub, per-project agent copies, and the Copilot runtime.
 
 ```
 ┌────────────────────────────────────────────────────────────────────────┐
 │                         LAYER 1: Central Hub                          │
-│                    (testpilot-core repository)                        │
+│                      (forge-core repository)                          │
 │                                                                       │
 │  ┌──────────────┐  ┌──────────────┐  ┌───────────────────────────┐   │
 │  │   Prompts    │  │  Knowledge   │  │     LEARNINGS.md          │   │
@@ -83,10 +83,21 @@ Phase 1: DETECT STACK
      │  Determine: language, framework, test runner, mock library, coverage tool
      │  Detect monorepo structure if applicable
      │
+Phase 1.5: COVERAGE EXCLUSION SCAN
+     │  Read build/coverage config for exclusion patterns
+     │  Classify excluded vs included packages
+     │  Adjust target list to avoid wasted effort
+     │
 Phase 2: ANALYZE PROJECT
      │  HLD: system purpose, module map, integrations, communication patterns
      │  LLD: per-module classes, public APIs, data models, DI setup
      │  Flows: request lifecycle, business logic, error handling
+     │
+Phase 2.5: DEPENDENCY GRAPH & CASCADE COVERAGE
+     │  Map function-to-function call relationships
+     │  Calculate cascade depth scores per entry point
+     │  Identify Tier 1/2/3 test targets
+     │  Feed cascade map into Phase 4 prioritization
      │
 Phase 3: AUDIT EXISTING TESTS
      │  Scan test directories
@@ -98,10 +109,10 @@ Phase 3.5: FIX BROKEN TESTS
      │  Apply 10+ battle-tested fix patterns
      │  Re-run coverage, update baseline
      │
-Phase 4: ITERATIVE TEST GENERATION (up to 5 rounds)
+Phase 4: ITERATIVE TEST GENERATION + AUTO COMPILE-FIX LOOP (up to 10 rounds)
      │  ┌─ 4.1: Identify coverage gaps
      │  │  4.2: Generate tests (prioritized by impact)
-     │  │  4.3: Compile, run, measure coverage
+     │  │  4.3: Compile, auto-fix, run, measure coverage
      │  │  4.4: Rollback protection (revert if coverage drops)
      │  │  4.5: Check exit conditions (target reached / max iterations / stall)
      │  └─ Loop back to 4.1 if not done
@@ -145,6 +156,58 @@ for iteration in 1..MAX_ITERATIONS:
     # Exit conditions
     if BEST_COVERAGE >= TARGET: break    # Target reached
     if STALL_COUNT >= 2: break           # Diminishing returns
+```
+
+## Cascade Coverage Architecture
+
+```
+                    ┌─────────────┐
+                    │ Entry Point │
+                    │  (Route)    │
+                    └──────┬──────┘
+                           │
+                    ┌──────▼──────┐
+                    │   Service   │ ◀── Tier 1 target (cascade depth 5+)
+                    └──────┬──────┘
+                           │
+              ┌────────────┼────────────┐
+              ▼            ▼            ▼
+        ┌──────────┐ ┌──────────┐ ┌──────────┐
+        │ Adapter  │ │  Client  │ │  Mapper  │ ◀── Tier 2 (depth 3-4)
+        └────┬─────┘ └────┬─────┘ └────┬─────┘
+             │             │             │
+             ▼             ▼             ▼
+        ┌──────────┐ ┌──────────┐ ┌──────────┐
+        │ Helpers  │ │   DTOs   │ │  Utils   │ ◀── Tier 3 (depth 1-2)
+        └──────────┘ └──────────┘ └──────────┘
+
+One Tier 1 test cascades through all layers = maximum coverage per test
+```
+
+## Auto Compile-Fix Loop
+
+```
+Generate Test Batch
+        │
+        ▼
+    Compile ──── Pass ──── Run Tests ──── Coverage
+        │
+      Fail
+        │
+        ▼
+  Classify Error ──┬── DTO drift → fix constructors
+                   ├── Missing import → add import
+                   ├── Wrong mock type → fix every/coEvery
+                   ├── Type mismatch → align types
+                   └── DI setup → add Koin/Spring config
+        │
+        ▼
+   Recompile (up to 3 retries)
+        │
+      Still failing?
+        │
+        ▼
+   Isolate broken test → continue with working tests
 ```
 
 ## Security Model

@@ -80,6 +80,15 @@ Identify:
 - user-context propagation,
 - security-sensitive branches worth testing.
 
+## Step 5.5 — Dependency graph preparation
+Prepare data for Phase 2.5 dependency graph analysis:
+- identify the main call chains from entry points through service → adapter → client → mapper → util layers,
+- note which functions call the most downstream functions,
+- flag methods with high "cascade depth" — these are prime candidates for cascade coverage,
+- identify shared utility functions called from many places (hub nodes).
+
+This data feeds into the dependency-graph prompt for full cascade coverage analysis.
+
 ## Step 6 — Testability map
 Classify backend files by unit-test suitability.
 

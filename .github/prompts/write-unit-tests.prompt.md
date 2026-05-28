@@ -44,6 +44,23 @@ Use this order by default:
 
 ---
 
+## Cascade-aware prioritization
+When a cascade map is available from Phase 2.5, override default order:
+1. **Tier 1 cascade targets** — entry points with cascade depth ≥ 5 (service methods calling adapters → clients → mappers)
+2. **Tier 2 cascade targets** — mid-level methods with cascade depth 3-4
+3. **Standard priority** — remaining services, adapters, utils, mappers
+4. **Tier 3 gap-fill** — isolated functions for remaining coverage gaps
+
+### Coverage Impact Predictor
+For each potential test target, estimate:
+- number of downstream functions exercised,
+- approximate lines covered through cascade,
+- mocking complexity required.
+
+Prefer targets with high cascade / low mocking complexity ratio.
+
+---
+
 ## Test design checklist
 Each test should:
 - validate one behavior,
@@ -60,6 +77,7 @@ Each test should:
 For each batch:
 1. read the target source file(s),
 2. trace dependencies,
+2.5. validate DTO/data class constructors referenced by the target — verify required params and types match current production signatures,
 3. identify uncovered branches,
 4. write tests,
 5. compile/run,
@@ -78,6 +96,16 @@ If the batch causes coverage regression or suite instability:
 5. move to a different target set.
 
 Never keep a batch that lowers accepted coverage.
+
+---
+
+## Auto compile-fix
+When tests fail to compile after generation:
+1. Read full compiler output.
+2. Classify errors: DTO drift, missing imports, wrong mock type, type mismatch, missing DI setup.
+3. Apply targeted fixes (update constructors, add imports, fix mock types).
+4. Recompile — retry up to 3 times.
+5. If still broken, remove only the failing test methods/files and proceed.
 
 ---
 

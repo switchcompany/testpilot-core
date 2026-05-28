@@ -1,10 +1,10 @@
 ---
 mode: agent
-description: "TestPilot Core orchestrator for analysis, audit, repair, iterative unit-test generation, rollback protection, and self-learning"
+description: "Forge Core orchestrator for analysis, audit, repair, iterative unit-test generation, rollback protection, and self-learning"
 tools: ["bash", "glob", "grep", "view", "edit", "create"]
 ---
 
-# Full Workflow — TestPilot Core
+# Full Workflow — Forge Core
 
 Use this prompt as the **main orchestrator** for backend test generation across any supported language.
 
@@ -42,7 +42,7 @@ Ask the user which mode to run:
 Record:
 - requested targets,
 - requested coverage target (default 90),
-- max iterations (default 5).
+- max iterations (default 10).
 
 ---
 
@@ -59,6 +59,19 @@ Required outputs:
 
 ---
 
+## Phase 1.5 — Coverage Exclusion Scan
+Run `coverage-exclusion-scan.prompt.md`.
+
+Collect:
+- excluded packages/paths per coverage tool,
+- exclusion sources (build files, config files),
+- packages with testable logic hidden behind exclusions,
+- adjusted target list removing excluded packages.
+
+Feed the exclusion map into all later phases.
+
+---
+
 ## Phase 2 — Analyze Project
 Run `analyze-project.prompt.md`.
 
@@ -69,6 +82,19 @@ Collect:
 - security model,
 - dependency seams,
 - testability map.
+
+---
+
+## Phase 2.5 — Dependency Graph & Cascade Coverage
+Run `dependency-graph.prompt.md`.
+
+Collect:
+- call chain map (entry points → downstream functions),
+- cascade depth scores per entry point,
+- coverage impact predictions,
+- tiered target list (Tier 1/2/3).
+
+Feed the cascade map into Phase 5 prioritization.
 
 ---
 
@@ -104,13 +130,13 @@ After fixes, rerun coverage and record:
 
 ---
 
-## Phase 5 — Iterative Test Generation Loop
+## Phase 6 — Iterative Test Generation Loop
 Run `write-unit-tests.prompt.md` in batches.
 
 ### Required control variables
 ```text
 TARGET_COVERAGE = user value or 90
-MAX_ITERATIONS = user value or 5
+MAX_ITERATIONS = user value or 10
 ITERATION = 1
 STALL_COUNT = 0
 STALL_THRESHOLD = 2.0
@@ -129,6 +155,7 @@ ROLLBACKS = 0
    - utils,
    - mappers,
    - other testable logic.
+   If a cascade map is available from Phase 2.5, use cascade-aware prioritization (Tier 1 → Tier 2 → standard → Tier 3 gap-fill).
 4. Generate a focused batch of tests.
 5. Compile and run the relevant suite.
 6. Regenerate coverage.
@@ -179,9 +206,23 @@ A rollback must include:
 - what was attempted,
 - confirmation that the repo ended in `BEST_STATE`.
 
+### Auto compile-fix loop
+After generating a batch:
+1. Compile immediately.
+2. If compilation fails, classify errors and apply fix patterns from Phase 4 (fix-broken-tests).
+3. Retry up to 3 times per batch.
+4. If still failing, isolate the broken test file and proceed with working tests.
+5. Never leave the suite in a broken state.
+
+### DTO constructor pre-validation
+Before generating tests that reference DTOs:
+1. Read the current DTO/data class constructor.
+2. Verify required params, types, and defaults.
+3. Use exact signatures in test data.
+
 ---
 
-## Phase 6 — Final Report
+## Phase 7 — Final Report
 Produce:
 - mode,
 - targets (if any),
@@ -198,7 +239,7 @@ Produce:
 
 ---
 
-## Phase 7 — Self-Learning
+## Phase 8 — Self-Learning
 Run `self-learn.prompt.md`.
 
 Capture:
