@@ -110,4 +110,41 @@ TestPilot Core uses this file to store:
 
 ---
 
+### Project: assembler-service (Round 2) | Stack: Kotlin 2.0/Ktor/Koin/MockK/JaCoCo | Date: 2026-05-28
+
+**Cascade-First Test Generation Results:**
+- Baseline (start of round 2): 416 tests, LINE 36.3%, BRANCH 15.8%, METHOD 48.2%
+- After Forge Core v2.5: 648 tests (+232), LINE 43.2% (+6.9%), BRANCH 21.5% (+5.7%), METHOD 53.2% (+5.0%)
+- Total tests generated in this round: 232 new tests across 11 test files
+- Zero test failures in final full suite run
+
+**Critical Learning — Study Existing Test Patterns FIRST (Phase -1 Rule):**
+1. **Before writing any test, study the project's existing test suite patterns** — understand their mock setup, teardown, HTTP client strategy, DI patterns. This is mandatory Phase -1 work.
+2. **Mold your tests to match the project's established patterns** — if existing tests use `HttpClientEngine.getClientEngine()` with `ClientConfigFactory` mocks, follow that pattern. Don't invent a new MockEngine approach.
+3. **If no existing tests exist, use framework best practices** — but when tests DO exist, their patterns are the golden standard for that project.
+4. **Pattern mismatch causes cross-test contamination** — a sub-agent wrote V3 adapter tests with a custom companion-level `MockEngine` instead of the project's `HttpClientEngine` pattern. This caused 33 pre-existing tests to fail due to Ktor engine state leakage.
+
+**Cross-Test Contamination Patterns Discovered:**
+1. **Companion-level `MockEngine` leaks Ktor state** — `HttpClient(MockEngine { ... })` in a companion object creates engine state that persists across test classes. The `@AfterAll` close isn't sufficient. Use per-instance or project-standard mock engines instead.
+2. **`unmockkAll()` is safer than individual `unmockkObject()` calls** — individual unmock calls risk missing objects. Always use `unmockkAll()` in `@AfterEach` for complete cleanup.
+3. **Global mutable state (`serviceAdapter`, `configProp`) requires explicit reset** — these top-level vars in `Common.kt` persist across test classes. Any test that modifies them must restore original state.
+4. **Binary search to find contaminator** — when N tests fail, remove test files one at a time until failures disappear. The last removed file is the contaminator.
+
+**Agent Orchestration Learnings (Forge Core Product):**
+1. **Stuck agent self-termination** — agents stuck for >5 minutes (50+ tool calls with no progress) should self-terminate and hand off full context to a fresh replacement agent.
+2. **Agent overtake pattern** — when replacing a stuck agent, the new agent receives: (a) the stuck agent's scope, (b) all discovered patterns/errors, (c) any partial work produced. The new agent MUST NOT repeat the stuck agent's approach.
+3. **Completed agents as helpers** — agents that finish their assigned scope can be re-deployed to help slow/stuck agents, but they must NOT interfere with the stuck agent's parallel work. They should work on complementary sub-tasks.
+4. **Sub-agent spawning** — parent agents can spawn child sub-agents for their own scope, but must: (a) clearly define each child's scope, (b) track child progress, (c) ensure children align with parent's requirements.
+5. **Progress reporting** — agents should report status every 3 minutes so the orchestrator can detect stuck agents early.
+6. **Cascade-first strategy validation** — testing high-cascade-impact functions first (utility/mapper functions called by many classes) provides maximum coverage amplification. One mapper test can cover lines in 5+ adapter methods.
+7. **~50% agent failure rate observed** — in production runs with 6+ parallel agents, roughly half got stuck. This is expected. The solution is fast detection + agent overtake, not prevention.
+8. **Scope splitting > single overtake** — splitting a stuck agent's broad scope into 2-3 focused helpers is more reliable than a single overtake agent with the same broad scope.
+
+**Tech Stack Notes (New):**
+- `CromaAdapterImplV3` creates a `newFixedThreadPool(16)` in constructor — thread pool may leak between tests if instance isn't properly scoped.
+- `CromaClient` inline reified functions (`getFailSafeClientResponse<T>`) cannot be mocked with standard `coEvery` — use `mockkObject(CromaClient)` or mock the `HttpClient` parameter instead.
+- `FetchCartRequestDto`, `RemoveProductDto`, `ProceedToPaymentRequestDto` all require `category` parameter — always check DTO constructors before writing tests.
+
+---
+
 <!-- Append new learnings below this line. -->

@@ -104,10 +104,16 @@ Run `analyze-existing-tests.prompt.md`.
 Collect:
 - test framework and style,
 - shared fixtures/utilities,
+- **mock setup/teardown patterns** (how existing tests handle MockK, Koin, global state),
+- **HTTP client patterns** (do they use a shared MockEngine? Per-test mock client? Project-level test utility?),
+- **DI lifecycle patterns** (stopKoin/startKoin placement, @BeforeEach vs @BeforeAll),
 - current failures,
 - baseline pass/fail counts,
 - baseline coverage,
 - prioritized gap list.
+
+**CRITICAL RULE — Pattern Conformance:**
+All generated tests MUST follow the established patterns found in existing tests. If the project uses `HttpClientEngine.getClientEngine()` with `ClientConfigFactory` mocking, every new test must use that same pattern. Do NOT invent new approaches (e.g., custom companion-level MockEngine) — pattern mismatch causes cross-test contamination that breaks pre-existing tests. If no existing tests exist, use framework best practices.
 
 If the mode is **Analyze only**, stop after Phase 2 and report.
 If the mode is **Analyze + Review existing tests**, stop after Phase 3 and report.
