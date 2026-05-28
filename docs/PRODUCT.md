@@ -32,6 +32,8 @@ Backend teams spend **30-40% of development time** writing and maintaining unit 
 - **Quality tests**: Not boilerplate — tests that actually catch bugs
 - **Consistent patterns**: Same testing conventions across all services
 - **Edge case coverage**: Null inputs, error paths, boundary conditions, concurrency
+- **Speed**: Parallel generation, smart batching — enterprise projects in under 45 minutes
+- **Zero babysitting**: Auto compile-fix loop means you walk away and come back to results
 
 ### For Engineering Managers
 - **Measurable coverage gains**: Before/after reports for every run

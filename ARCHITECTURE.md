@@ -210,6 +210,52 @@ Generate Test Batch
    Isolate broken test → continue with working tests
 ```
 
+## Speed & Parallel Execution Architecture
+
+```
+┌─────────────────────────────────────────────────────────┐
+│               ORCHESTRATOR (full-workflow)               │
+│                                                         │
+│  Phase 1-2.5 ─── Sequential (architecture analysis)    │
+│       │                                                 │
+│       ▼                                                 │
+│  ┌─────────────────────────────────────────┐            │
+│  │        PARALLEL GENERATION ENGINE        │            │
+│  │                                         │            │
+│  │  ┌─────────┐ ┌─────────┐ ┌─────────┐  │            │
+│  │  │ Scope A │ │ Scope B │ │ Scope C │  │  Parallel  │
+│  │  │ Agent   │ │ Agent   │ │ Agent   │  │  agents    │
+│  │  │ (pkg.a) │ │ (pkg.b) │ │ (pkg.c) │  │  per scope │
+│  │  └────┬────┘ └────┬────┘ └────┬────┘  │            │
+│  │       │           │           │        │            │
+│  │       ▼           ▼           ▼        │            │
+│  │  ┌──────────────────────────────────┐  │            │
+│  │  │          MERGE & VALIDATE        │  │            │
+│  │  │    Full suite → Coverage report  │  │            │
+│  │  └──────────────────────────────────┘  │            │
+│  └─────────────────────────────────────────┘            │
+│       │                                                 │
+│       ▼                                                 │
+│  .forge-cache/ ── Architecture + dependency graph       │
+│       │            (cached for repeat runs)             │
+│       ▼                                                 │
+│  Target reached? ── YES → Early exit                    │
+│                     NO  → Next iteration                │
+└─────────────────────────────────────────────────────────┘
+```
+
+### Performance Optimization Layers
+
+| Layer | Optimization | Impact |
+|-------|-------------|--------|
+| **Analysis** | Architecture caching in `.forge-cache/` | 60-70% faster on repeat runs |
+| **Planning** | Lazy phase execution (skip unnecessary phases) | 2-5 min saved per run |
+| **Generation** | Parallel agents per package scope | 4-6x throughput on large projects |
+| **Compilation** | Smart batching (3-5 files, compile once) | ~3x fewer compile cycles |
+| **Coverage** | Incremental (new tests only, full at boundaries) | ~50% faster iterations |
+| **Scaffolding** | Pre-computed templates from knowledge packs | 30-40% faster per file |
+| **Termination** | Early exit when target reached | No wasted generation |
+
 ## Security Model
 
 - Agent runs entirely within Copilot's sandbox

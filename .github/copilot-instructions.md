@@ -35,6 +35,64 @@ If the target cannot be reached, explain:
 
 ---
 
+## Speed & Performance
+
+Speed is a **core product differentiator**. Best coverage, fastest delivery. Every phase must be optimized for speed without sacrificing quality.
+
+### Parallel test generation
+Split the project into independent scopes (by package, module, or layer) and generate tests for multiple scopes **simultaneously** using parallel agents when the runtime supports it.
+- Each scope gets its own agent with pre-loaded context (architecture analysis, cascade map, exclusion list, existing test patterns).
+- Scopes must not overlap — no two agents should generate tests for the same file.
+- Merge results after all agents complete, then run the full suite once.
+
+### Lazy phase execution
+Skip phases that add no value for the current project:
+- **Skip Phase 3.5** (Fix Broken Tests) if baseline tests pass 100%.
+- **Skip Phase 2.5** (Dependency Graph) in targeted mode for ≤ 3 files.
+- **Merge Phase 1 + 1.5** into a single pass — detect stack and scan exclusions simultaneously.
+- **Skip Phase 0** (User Gate) in autonomous/CI mode — default to full project run.
+
+### Smart batch sizing
+Generate **multiple test files per batch**, not one at a time.
+- Group related targets (e.g., all mapper tests in one batch, all service tests in another).
+- Compile once per batch, not per file.
+- Aim for 3-5 test files per batch in full-project mode.
+
+### Coverage delta mode
+After the first baseline measurement, use **incremental coverage** when the stack supports it:
+- Run only new/changed test files for fast feedback during iteration.
+- Run the full suite + full coverage only at iteration boundaries (every 2-3 batches).
+- This dramatically reduces iteration cycle time on large projects.
+
+### Pre-computed test scaffolds
+Use knowledge packs and existing test patterns to **pre-generate test file scaffolds** before writing test methods:
+- Imports, class structure, setup/teardown, mock declarations — all generated from templates.
+- Only the actual test methods need per-target analysis.
+- This cuts generation time per file by ~30-40%.
+
+### Early exit optimization
+Exit the iteration loop **immediately** when:
+- Coverage jumps past target in a single batch — don't finish remaining planned batches.
+- Cascade analysis predicts that remaining uncovered code is infra-bound — report and stop.
+- The coverage delta from Tier 1 targets alone exceeds the target — skip Tier 2/3 entirely.
+
+### Architecture caching
+On repeat runs against the same project:
+- Check if `.forge-cache/architecture.json` exists and is recent (< 7 days).
+- If so, skip Phase 1, 1.5, 2, and 2.5 — load cached results directly.
+- Only re-analyze if source files have changed (check via git diff or file modification times).
+- This makes repeat runs **60-70% faster**.
+
+### Performance targets
+| Project Size | Target Time | Strategy |
+|---|---|---|
+| Small (< 2K lines) | **5-10 minutes** | Sequential, single-batch |
+| Medium (2K-10K lines) | **15-25 minutes** | 2-3 parallel scopes, smart batching |
+| Large (10K-50K lines) | **30-45 minutes** | 4-6 parallel scopes, cascade-first, incremental coverage |
+| Enterprise (50K+ lines) | **45-90 minutes** | 6+ parallel scopes, architecture caching, delta mode |
+
+---
+
 ## Phase -1 — Load Past Learnings
 
 Before any analysis or test generation:

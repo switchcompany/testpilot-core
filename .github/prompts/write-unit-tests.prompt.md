@@ -75,15 +75,23 @@ Each test should:
 
 ## Batch workflow
 For each batch:
-1. read the target source file(s),
+1. read the target source file(s) — **batch 3-5 related files per iteration for speed**,
 2. trace dependencies,
 2.5. validate DTO/data class constructors referenced by the target — verify required params and types match current production signatures,
 3. identify uncovered branches,
-4. write tests,
-5. compile/run,
-6. generate coverage,
+4. write tests — **use pre-computed scaffolds from knowledge packs when available**,
+5. compile/run — **compile once per batch, not per file**,
+6. generate coverage — **use incremental coverage during iteration, full suite at iteration boundaries**,
 7. compare against prior accepted coverage,
 8. keep or roll back the batch.
+
+### Parallel generation
+When the runtime supports parallel agents:
+1. Split targets into **independent scopes** (by package, module, or layer).
+2. Assign each scope to a parallel agent with pre-loaded context: architecture analysis, cascade map, exclusion list, existing test patterns, DTO signatures.
+3. Ensure scopes don't overlap — no two agents write tests for the same file.
+4. Merge all generated test files after agents complete.
+5. Run the full suite once to validate, then measure coverage.
 
 ---
 

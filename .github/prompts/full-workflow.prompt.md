@@ -133,6 +133,12 @@ After fixes, rerun coverage and record:
 ## Phase 6 — Iterative Test Generation Loop
 Run `write-unit-tests.prompt.md` in batches.
 
+### Speed rules
+- **Parallel scopes**: Split targets into independent scopes and generate tests simultaneously when runtime supports parallel agents.
+- **Smart batching**: Group 3-5 related test files per batch. Compile once per batch.
+- **Incremental coverage**: After baseline, run only new tests for fast feedback. Full suite at iteration boundaries.
+- **Early exit**: Stop immediately when target coverage is reached — don't finish remaining planned batches.
+
 ### Required control variables
 ```text
 TARGET_COVERAGE = user value or 90
@@ -270,3 +276,19 @@ A run is complete only when:
 - rollback protection has been honored,
 - production code remains untouched,
 - self-learning is updated if new patterns were discovered.
+
+---
+
+## Speed Optimization Rules
+Apply these at every phase to minimize total run time:
+
+1. **Merge Phase 1 + 1.5** into a single scan pass when possible.
+2. **Skip Phase 4** (Fix Broken Tests) if baseline passes 100%.
+3. **Skip Phase 2.5** (Dependency Graph) in targeted mode for ≤ 3 files.
+4. **Generate tests in parallel** — split project into independent package scopes, assign each to a parallel agent with pre-loaded context.
+5. **Batch 3-5 test files per iteration** — compile once per batch, not per file.
+6. **Use incremental coverage** during iteration — full suite only at iteration boundaries.
+7. **Exit immediately** when target coverage is reached mid-batch.
+8. **Cache architecture analysis** — on repeat runs, check `.forge-cache/` and skip Phases 1-2.5 if recent.
+9. **Pre-compute test scaffolds** from knowledge packs before writing test methods.
+10. **Never re-analyze already-covered code** — focus only on gaps.
