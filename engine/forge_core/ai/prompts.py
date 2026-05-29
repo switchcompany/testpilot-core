@@ -1,0 +1,87 @@
+"""Load and template .md prompt files for AI consumption."""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+from forge_core.utils import logger
+
+
+def load_prompt(prompts_dir: Path, prompt_name: str) -> str:
+    """Load a prompt .md file from the prompts directory.
+
+    Args:
+        prompts_dir: Path to the prompts directory.
+        prompt_name: Name of the prompt file (e.g., 'detect-tech-stack').
+
+    Returns:
+        The prompt content as a string.
+    """
+    file_path = prompts_dir / f"{prompt_name}.prompt.md"
+    if not file_path.exists():
+        logger.warn(f"Prompt not found: {file_path}")
+        return ""
+
+    content = file_path.read_text(encoding="utf-8")
+    # Strip YAML frontmatter if present
+    if content.startswith("---"):
+        parts = content.split("---", 2)
+        if len(parts) >= 3:
+            content = parts[2].strip()
+
+    return content
+
+
+def template_prompt(prompt: str, variables: dict[str, str]) -> str:
+    """Replace template variables in a prompt.
+
+    Variables use {{variable_name}} syntax.
+    """
+    result = prompt
+    for key, value in variables.items():
+        result = result.replace(f"{{{{{key}}}}}", value)
+    return result
+
+
+def build_file_context(files: dict[str, str], max_files: int = 50) -> str:
+    """Build a file context string from a dict of {path: content}.
+
+    Formats each file with clear separators for the AI to parse.
+    """
+    parts: list[str] = []
+    for i, (path, content) in enumerate(files.items()):
+        if i >= max_files:
+            parts.append(f"\n... and {len(files) - max_files} more files (truncated)")
+            break
+        parts.append(f"--- {path} ---\n{content}")
+
+    return "\n\n".join(parts)
+
+
+def load_learnings(central_path: str | None, local_path: Path | None) -> str:
+    """Load LEARNINGS.md from central hub and/or local project."""
+    learnings_parts: list[str] = []
+
+    if central_path:
+        central_file = Path(central_path) / "LEARNINGS.md"
+        if central_file.exists():
+            learnings_parts.append(
+                f"=== Central Learnings ===\n{central_file.read_text(encoding='utf-8')}"
+            )
+
+    if local_path:
+        local_file = local_path / "LEARNINGS.md"
+        if local_file.exists():
+            learnings_parts.append(
+                f"=== Project Learnings ===\n{local_file.read_text(encoding='utf-8')}"
+            )
+
+    return "\n\n".join(learnings_parts)
+
+
+def load_knowledge_pack(central_path: str, pack_name: str) -> str:
+    """Load a specific knowledge pack (e.g., kotlin-ktor.md)."""
+    pack_path = Path(central_path) / "knowledge-packs" / f"{pack_name}.md"
+    if pack_path.exists():
+        return pack_path.read_text(encoding="utf-8")
+    return ""
