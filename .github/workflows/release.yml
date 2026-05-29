@@ -1,0 +1,65 @@
+name: Build & Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            artifact: forge-core-linux-amd64
+          - os: macos-latest
+            artifact: forge-core-darwin-amd64
+          - os: macos-14
+            artifact: forge-core-darwin-arm64
+          - os: windows-latest
+            artifact: forge-core-windows-amd64.exe
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        working-directory: engine
+        run: |
+          pip install -e ".[dev]"
+          pip install pyinstaller
+
+      - name: Build binary
+        working-directory: engine
+        run: pyinstaller forge-core.spec
+
+      - name: Rename artifact
+        run: |
+          mv engine/dist/forge-core* engine/dist/${{ matrix.artifact }} 2>/dev/null || true
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: engine/dist/${{ matrix.artifact }}
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: artifacts/**/*
+          generate_release_notes: true
