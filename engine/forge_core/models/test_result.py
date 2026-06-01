@@ -1,40 +1,42 @@
-"""Pydantic models for test results and coverage reports."""
+"""Data models for test results and coverage reports."""
 
 from __future__ import annotations
 
+from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, Field
 
-
-class TestFileResult(BaseModel):
+@dataclass
+class TestFileResult:
     """Result of a single generated test file."""
 
-    file_path: str
+    file_path: str = ""
     test_count: int = 0
     passed: int = 0
     failed: int = 0
-    errors: list[str] = Field(default_factory=list)
-    compile_errors: list[str] = Field(default_factory=list)
+    errors: list[str] = field(default_factory=list)
+    compile_errors: list[str] = field(default_factory=list)
 
 
-class CoverageEntry(BaseModel):
+@dataclass
+class CoverageEntry:
     """Coverage data for a single source file."""
 
-    file_path: str
+    file_path: str = ""
     line_coverage: float = 0.0
     branch_coverage: float = 0.0
     lines_covered: int = 0
     lines_total: int = 0
 
 
-class CoverageReport(BaseModel):
+@dataclass
+class CoverageReport:
     """Aggregated coverage report."""
 
     line_coverage: float = 0.0
     branch_coverage: float = 0.0
-    files: list[CoverageEntry] = Field(default_factory=list)
+    files: list[CoverageEntry] = field(default_factory=list)
     total_lines_covered: int = 0
     total_lines: int = 0
     total_tests: int = 0
@@ -42,11 +44,12 @@ class CoverageReport(BaseModel):
     tests_failed: int = 0
 
 
-class IterationResult(BaseModel):
+@dataclass
+class IterationResult:
     """Result of a single generation iteration."""
 
-    iteration: int
-    tests_generated: list[TestFileResult] = Field(default_factory=list)
+    iteration: int = 0
+    tests_generated: list[TestFileResult] = field(default_factory=list)
     coverage_before: float = 0.0
     coverage_after: float = 0.0
     coverage_delta: float = 0.0
@@ -54,14 +57,15 @@ class IterationResult(BaseModel):
     duration_seconds: float = 0.0
 
 
-class RunReport(BaseModel):
+@dataclass
+class RunReport:
     """Final report for a complete Forge Core run."""
 
     project_name: str = ""
     project_path: str = ""
     language: str = ""
     framework: str = ""
-    started_at: datetime = Field(default_factory=datetime.now)
+    started_at: datetime = field(default_factory=datetime.now)
     completed_at: Optional[datetime] = None
     duration_seconds: float = 0.0
 
@@ -75,10 +79,10 @@ class RunReport(BaseModel):
     total_tests_after: int = 0
     tests_generated: int = 0
     tests_fixed: int = 0
-    test_files_created: list[str] = Field(default_factory=list)
+    test_files_created: list[str] = field(default_factory=list)
 
     # Iterations
-    iterations: list[IterationResult] = Field(default_factory=list)
+    iterations: list[IterationResult] = field(default_factory=list)
     total_iterations: int = 0
     rollbacks: int = 0
 
@@ -90,4 +94,4 @@ class RunReport(BaseModel):
     # Metadata
     mode: str = "full"
     target_coverage: float = 90.0
-    production_files_changed: int = 0  # must always be 0
+    production_files_changed: int = 0

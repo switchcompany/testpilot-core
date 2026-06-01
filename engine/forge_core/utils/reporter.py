@@ -64,7 +64,9 @@ async def check_license(config: ForgeConfig) -> dict[str, Any]:
             resp = await client.get(url, headers=headers)
             if resp.status_code == 200:
                 return resp.json()
-    except Exception:
-        pass
+            else:
+                logger.warn(f"License API returned {resp.status_code}: {resp.text[:200]}")
+    except Exception as e:
+        logger.warn(f"License API unreachable: {e}")
 
     return {}

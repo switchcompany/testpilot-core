@@ -3,8 +3,8 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "forge-core"
-version = "2.0.0"
+name = "switchforge"
+version = "2.0.1"
 description = "AI-powered backend test generation engine"
 readme = "README.md"
 license = "MIT"
@@ -25,31 +25,32 @@ classifiers = [
 ]
 
 dependencies = [
-    "litellm>=1.40.0",
-    "instructor>=1.3.0",
     "typer>=0.12.0",
     "rich>=13.7.0",
     "pyyaml>=6.0",
-    "tiktoken>=0.7.0",
     "httpx>=0.27.0",
-    "pydantic>=2.7.0",
 ]
 
 [project.optional-dependencies]
+accurate-tokens = ["tiktoken>=0.7.0"]
 dev = [
     "pytest>=8.0",
     "pytest-asyncio>=0.23",
     "ruff>=0.5.0",
     "pyinstaller>=6.0",
+    "tiktoken>=0.7.0",
 ]
 
 [project.scripts]
-forge-core = "forge_core.cli:app"
+switchforge = "forge_core.cli:app"
 
 [project.urls]
 Homepage = "https://theswitchcompany.online/products/forge/core"
 Repository = "https://github.com/switchcompany/forge-core"
 Documentation = "https://theswitchcompany.online/docs/forge-core"
+
+[tool.hatch.build.targets.wheel]
+packages = ["forge_core"]
 
 [tool.ruff]
 target-version = "py310"

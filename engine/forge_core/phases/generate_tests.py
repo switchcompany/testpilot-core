@@ -160,12 +160,23 @@ def run(
 
 
 def _prioritize_targets(graph: ProjectGraph) -> list[Component]:
-    """Build journey-weighted priority list of components to test."""
+    """Build ROI-weighted priority list of components to test.
+
+    ROI scoring (lines coverable per test / complexity):
+    - NotImplemented methods: ROI=10 (1-2 lines/test, trivial complexity)
+    - Pure logic (mappers/processors): ROI=8 (10-20 lines/test, low complexity)
+    - Service delegates: ROI=5 (5-10 lines/test, medium complexity)
+    - HTTP-dependent (adapter try/catch): ROI=3 (3-5 lines/test, medium complexity)
+    - HTTP-dependent (MockEngine deep): ROI=4 (15-30 lines/test, high complexity)
+
+    Two-phase strategy:
+    - Phase A (shallow): Cover method entry points first (quick coverage gains)
+    - Phase B (deep): Cover lambda/inner class bodies (requires MockEngine)
+    """
     all_components: list[Component] = []
 
-    # Collect all components
+    # Collect all components with ROI scoring
     for module in graph.modules:
-        # Components in journeys get highest priority
         journey_components = set()
         for journey in module.journeys:
             journey_components.update(journey.components)
@@ -173,21 +184,106 @@ def _prioritize_targets(graph: ProjectGraph) -> list[Component]:
         for layer in module.layers:
             for comp in layer.components:
                 if not comp.is_tested:
+                    # Calculate ROI score based on method classification and layer
+                    comp.roi_score = _calculate_roi(comp, layer.name)
+
                     # Boost priority for journey components
                     if comp.name in journey_components:
-                        all_components.insert(0, comp)
-                    else:
-                        all_components.append(comp)
+                        comp.roi_score *= 1.5
+
+                    all_components.append(comp)
+
+    # Sort by ROI score descending (highest value first)
+    all_components.sort(key=lambda c: c.roi_score, reverse=True)
 
     return all_components
 
 
+def _calculate_roi(comp: Component, layer_name: str) -> float:
+    """Calculate ROI score for a component based on its characteristics.
+
+    Higher ROI = more lines covered per unit of test-writing effort.
+    """
+    # Base ROI by layer type
+    layer_roi = {
+        "repository": 8.0,   # mappers/transformers — pure logic, highest ROI
+        "util": 7.0,         # pure helpers
+        "service": 5.0,      # business logic with mocks
+        "controller": 4.0,   # route handlers
+        "middleware": 3.0,    # interceptors/filters
+        "config": 1.0,       # usually excluded from coverage
+        "model": 1.0,        # usually excluded from coverage
+    }
+    roi = layer_roi.get(layer_name, 4.0)
+
+    # Boost for NotImplemented methods (coverage gold)
+    if comp.not_implemented_count > 0:
+        roi += comp.not_implemented_count * 0.5
+
+    # Boost for pure logic classification
+    if comp.method_classification == "pure_logic":
+        roi *= 1.3
+    elif comp.method_classification == "not_implemented":
+        roi *= 1.5  # trivial to test
+
+    # Penalty for inline reified (needs MockEngine — harder to test)
+    if comp.has_inline_reified:
+        roi *= 0.7
+
+    # Penalty for heavy lambda coverage gaps (needs deep MockEngine tests)
+    if comp.lambda_lines > 50:
+        roi *= 0.8
+
+    return round(roi, 2)
+
+
 def _build_dto_context(registry: DTORegistry) -> str:
-    """Build a compact DTO reference for the system prompt."""
+    """Build a compact DTO reference for the system prompt.
+
+    Includes:
+    - Construction strategy (@Serializable → Json.decodeFromString)
+    - Namespace collision warnings with import aliases
+    - Required vs optional params
+    """
     lines: list[str] = []
+
+    # Warn about @Serializable DTOs upfront
+    serializable = registry.serializable_dtos()
+    if serializable:
+        lines.append(
+            f"⚠ {len(serializable)} @Serializable DTOs detected. "
+            "Use Json.decodeFromString<Type>(jsonString) instead of direct constructors. "
+            "Direct construction causes 'seen0/serializationConstructorMarker' compile errors."
+        )
+        lines.append("")
+
+    # Warn about namespace collisions
+    collisions = registry.get_collisions()
+    if collisions:
+        lines.append("⚠ Namespace collisions — use import aliases:")
+        for name, entries in collisions.items():
+            for entry in entries:
+                alias = entry.package.replace(".", "_").replace("model_dto_", "") + "_" + name
+                lines.append(f"  - {entry.fully_qualified_name} as {alias}")
+        lines.append("")
+
     for entry in list(registry.entries.values())[:50]:  # cap at 50 DTOs
-        params = ", ".join(f"{p.name}: {p.type}" for p in entry.params)
-        lines.append(f"- {entry.class_name}({params})")
+        required = [p for p in entry.params if not p.nullable and not p.default]
+        optional = [p for p in entry.params if p.nullable or p.default]
+
+        req_str = ", ".join(f"{p.name}: {p.type}" for p in required)
+        opt_count = len(optional)
+
+        strategy = ""
+        if entry.construction_strategy == "json_decode":
+            strategy = " [USE Json.decodeFromString]"
+        elif entry.has_builder:
+            strategy = " [USE builder]"
+
+        lines.append(f"- {entry.class_name}({req_str}){strategy}")
+        if opt_count:
+            lines.append(f"  + {opt_count} optional params")
+
     return "\n".join(lines)
 
 

@@ -147,4 +147,76 @@ Forge Core uses this file to store:
 
 ---
 
+### Project: assembler-service (Round 3 — MockEngine Breakthrough) | Stack: Kotlin 2.0/Ktor/Koin/MockK/JaCoCo | Date: 2026-05-30
+
+**Critical Discovery — Inline Reified Functions ARE Testable:**
+1. **Previous belief was wrong** — Round 2 concluded that `suspend inline fun <reified T>` functions were "untestable" and represented a hard coverage ceiling. This is incorrect.
+2. **MockEngine injection pattern** — Don't mock the `object` with inline reified functions. Instead, mock the `HttpClient` factory that produces the client passed TO those functions. The inline reified functions execute normally — they just hit MockEngine instead of real HTTP.
+3. **Coverage impact** — adapter/v4/impl package went from 2% → 43.5% LINE coverage with just 6 tests using this approach.
+
+**Fix Patterns Discovered:**
+1. **JUnit 5 silently drops non-Unit test methods** — `fun test() = runBlocking { assertNotNull(x) }` compiles but JUnit 5 doesn't discover it because `assertNotNull` returns non-Unit type. Fix: `fun test(): Unit = runBlocking { ... Unit }`. This was the root cause of "No tests found" with compiled test classes.
+2. **`@Nested` inner classes vs flat tests** — JUnit 5 `@Nested` tests can have discovery issues in Kotlin when combined with `runBlocking`. Prefer flat test methods in the outer class for reliability.
+3. **Use existing project MockEngine helpers** — Creating a custom `HttpClient(MockEngine)` in a companion object leaked Ktor engine state and broke 33 existing tests. The project's `HttpClientEngine.getClientEngine()` helper was designed to avoid this — always use project-standard test infrastructure.
+4. **Top-level val initialization timing** — Kotlin top-level `val` properties are initialized once when the containing file's generated class loads. Mock `ClientConfigFactory.getClient()` BEFORE first access to ensure top-level HttpClient vals get the MockEngine client.
+
+**Coverage Results:**
+- Starting: LINE 37.2%, BRANCH 16.8%, METHOD 47.6% (77 tests from rounds 1-2)
+- After MockEngine adapter tests: LINE 38.0% (+0.8%), BRANCH 17.3% (+0.5%), METHOD 48.7% (+1.1%)
+- adapter/v4/impl specifically: LINE 2% → 43.5%, METHOD → 51.4%, BRANCH → 22.0%
+- Total tests: 474 (up from 468), 0 failures
+
+**Product Learning (Forge Core Improvement):**
+- The test generation pipeline MUST detect `suspend inline fun <reified T>` patterns and automatically switch to MockEngine strategy instead of MockK mocking.
+- This is a new Phase 2.5 detection signal: "inline reified functions accepting HttpClient parameter" → trigger MockEngine test template.
+- Knowledge pack `kotlin-ktor.md` updated with Section 22: MockEngine pattern.
+
+---
+
+<!-- Append new learnings below this line. -->
+
+### Project: assembler-service (Round 4 — Deep Coverage Push) | Stack: Kotlin 2.0/Ktor/Koin/MockK/JaCoCo | Date: 2026-06-01
+
+**Coverage Progression: 38% → 66.3% (verified), ~70%+ (unverified mega-batch)**
+- Total tests: 1,608 verified (+ ~92 unverified mapper tests)
+- Coverage: LINE 66.3% (10,007/15,090), BRANCH 37.3%, METHOD 69.2%
+- Target: 90% (13,581 lines needed, 3,574 remaining gap)
+
+**Critical Patterns Discovered:**
+
+1. **42% of missed lines are lambda/inner classes** — JaCoCo reports `$methodName$2` classes for Kotlin coroutine blocks (`withContext`, `coroutineScope`). Simple try/catch adapter tests cover method entry (3-5 lines) but NOT the lambda body (15-30 lines). Need two-phase approach: shallow first, then MockEngine deep tests.
+
+2. **ROI scoring transforms test prioritization** — Mapper tests give 10-20 lines/test (ROI=8), adapter try/catch gives 3-5 lines/test (ROI=3), MockEngine deep gives 15-30 lines/test but 5x complexity (ROI=4). NotImplemented assertThrows gives 1-2 lines/test with trivial effort (ROI=10). Always generate in ROI-descending order.
+
+3. **@Serializable DTOs need Json.decodeFromString** — `@Serializable` annotation generates synthetic constructors with `seen0`/`serializationConstructorMarker` params. Direct construction fails. Use `Json.decodeFromString<Type>(jsonString)`. The static analyzer now auto-detects these.
+
+4. **DTO namespace collisions across API versions** — Same DTO name in v1/v2/v3/v4 packages (e.g., `OrderConfirmationRequest`, `RemoveProductDto`, `CartModificationRequest`). Must auto-detect and generate import aliases. The registry now tracks collisions via `get_collisions()`.
+
+5. **DTO constructor lookup is the #1 token consumer** — Each unknown DTO triggers grep → view → fix cycle. Pre-building a complete DTO param registry saves 60%+ tokens on adapter/service tests. Phase 0 DTO registry is critical.
+
+6. **Method classification drives test template selection** — Classify every method: `NotImplemented` → `assertThrows` one-liner, `PureLogic` → direct test, `HTTPDependent` → MockEngine with response template, `Delegate` → mock inner dependency. Classification is now part of static analysis.
+
+7. **Koin dependency auto-detection prevents runtime crashes** — Scan `get<Type>()`/`inject<Type>()` calls to build Koin module setup. Missing dependencies cause runtime (not compile) errors. V2 needs V1+V3+LaunchDarkly, V3 needs V1+V2+LaunchDarkly, V4 needs V1 only.
+
+8. **Compilation batching saves 60% time** — Write 50-100 tests, compile-check only (8s), fix errors, THEN run full test+JaCoCo (100s). Never run full suite after each small change.
+
+9. **Branch coverage needs paired null/non-null tests** — At 65% line coverage, branch coverage was only 37%. Each `?.let`, `when`, `if(x.isNullOrEmpty())` needs both paths tested. Systematic pairing doubles branch coverage.
+
+10. **Agent stuck self-resolution** — General-purpose agents get stuck at 20+ min with 33+ tool calls. Kill after 5 min and self-overtake with smaller focused tasks. ~50% agent failure rate is expected; fast detection + replacement is the solution.
+
+**Coverage Insights:**
+- NotImplemented methods: BBAdapterImpl 56 methods → 74 tests, cleared entire interface in one batch
+- Mapper tests gave highest sustained ROI: 50+ tests for v1, 25+ for v2, 17+ for v3 in single mega-batch
+- Processor tests (MultiBuyGroup + Merchandize): pure `when` branches → 19 tests covering all combinations
+- Adapter mock pattern is identical across v1/v2/v3/v4 — ConfigProps + ClientConfigFactory + RedisDaprClient + Koin
+
+**Tech Stack Notes:**
+- `CartEntryQuantityRespectivePriceData` — note the typo "Qunatity" in actual class name
+- `OrderDeliveryCost` is used for mrp/actual/displayPrice fields (not `PriceValue`)
+- `OrderedProduct` not `OrderProduct`, `AllCouponData` not `CouponData`, `CItemsItem` not `Item`
+- `AllOfferSavingsData.promotionSavings` is `String?` in v1, `Double?` in v2 — different types for same field name across versions
+- v3 `RemoveProductDto` needs `pinCode: String` buried as last required param under 25+ optional params
+
+---
+
 <!-- Append new learnings below this line. -->

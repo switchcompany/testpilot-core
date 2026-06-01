@@ -97,6 +97,16 @@ def _parse_journey_response(
             )
             for p in dto_data.get("params", dto_data.get("constructor_params", []))
         ]
+
+        is_serializable = dto_data.get("is_serializable", False)
+        construction_strategy = "direct"
+        if is_serializable:
+            construction_strategy = "json_decode"
+        elif dto_data.get("has_builder", False):
+            construction_strategy = "builder"
+        elif dto_data.get("has_factory", False):
+            construction_strategy = "factory"
+
         entry = DTOEntry(
             class_name=dto_data.get("class_name", dto_data.get("name", "")),
             package=dto_data.get("package", ""),
@@ -104,6 +114,8 @@ def _parse_journey_response(
             params=params,
             has_builder=dto_data.get("has_builder", False),
             has_factory=dto_data.get("has_factory", False),
+            is_serializable=is_serializable,
+            construction_strategy=construction_strategy,
             nested_dtos=dto_data.get("nested_dtos", []),
             used_in_journeys=dto_data.get("used_in_journeys", []),
             used_in_layers=dto_data.get("used_in_layers", []),

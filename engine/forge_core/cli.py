@@ -105,7 +105,8 @@ def run(
 
     # Upload report to SaaS (if authenticated)
     if config.auth_token:
-        asyncio.run(upload_report(config, report.model_dump()))
+        import dataclasses
+        asyncio.run(upload_report(config, dataclasses.asdict(report)))
 
     # Exit with appropriate code
     if report.production_files_changed > 0:

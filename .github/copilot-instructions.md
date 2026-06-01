@@ -229,7 +229,7 @@ Always apply this order:
    ```
 4. For **duplicate class instrumentation errors**, filter `classDirectories` to real compiled app classes only.
 5. Always add or preserve `ignoreFailures = true` so reports still generate when pre-existing failures exist.
-6. **JaCoCo cannot instrument Kotlin inline reified functions reliably** — use **Kover** for Kotlin if inline coverage matters.
+6. **JaCoCo cannot instrument Kotlin inline reified functions reliably** — use **Kover** for Kotlin if inline coverage matters. However, the functions themselves ARE testable via MockEngine injection — the coverage limitation is in reporting, not in testability.
 
 ### Detection outputs
 Produce a concise stack report containing:
@@ -390,7 +390,7 @@ Instead of measuring cascade depth (how many layers a test touches), trace real 
 1. **Entry point discovery**: Identify all HTTP routes, message consumers, scheduled jobs, CLI commands, gRPC services, startup hooks.
 2. **Journey map**: For each entry point, trace the complete path: Route → Service → Adapter → Client → Mapper, with DTOs consumed/produced at each boundary and branch points (error paths, cache hit/miss, feature flags).
 3. **DTO Registry**: Read every DTO/data class **once**. Build a structured registry with constructor params, types, defaults, nested references, and which journeys use each DTO. No agent should ever re-read a DTO source file.
-4. **Mock boundary map**: For each journey, identify exactly what must be mocked (external clients, databases, queues, caches, config) and what cannot be mocked (inline reified functions, final classes).
+4. **Mock boundary map**: For each journey, identify exactly what must be mocked (external clients, databases, queues, caches, config). For inline reified functions that accept `HttpClient` parameters, use **MockEngine injection** — don't mock the function, mock the HttpClient it receives (see Knowledge Pack — Kotlin/Ktor §22).
 5. **Journey test strategy**: Prioritize test targets by business value, not cascade depth.
 
 ### Journey-weighted prioritization
@@ -542,6 +542,12 @@ Repair existing test failures before adding new tests.
 #### 19. Top-Level Val Dependencies in Mappers/Adapters
 - Symptom: tests fail because `configProp` or similar top-level val is uninitialized.
 - Fix: initialize required top-level configuration vals before instantiating mapper/adapter classes. These are often deeply wired and must be set up before any mapper test.
+
+#### 20. MockEngine Injection for Inline Reified Functions
+- Symptom: Kotlin `object` singleton has `suspend inline fun <reified T>` methods that MockK cannot intercept. Adapter tests can't mock the client calls.
+- Detection: look for `suspend inline fun <reified T>` + `client: HttpClient` parameter in the function signature.
+- Fix: Don't mock the object — mock the `HttpClient` factory (`ClientConfigFactory.getClient()`) to return a MockEngine-backed client. The inline reified functions execute normally against fake HTTP endpoints. Use project-standard MockEngine helpers if available. This approach lifted adapter/v4 coverage from 2% → 43.5% in a real enterprise codebase.
+- Critical detail: JUnit 5 silently drops test methods with non-Unit return types. Always use `: Unit = runBlocking { ... Unit }` for coroutine tests.
 
 ### Python / FastAPI-specific Sentinel learnings
 Apply these patterns whenever the project resembles FastAPI/Starlette services:

@@ -1,12 +1,11 @@
-"""Pydantic models for configuration and tenant/plan data."""
+"""Data models for configuration and tenant/plan data."""
 
 from __future__ import annotations
 
+from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
 from typing import Optional
-
-from pydantic import BaseModel, Field
 
 
 class Plan(str, Enum):
@@ -31,7 +30,8 @@ class RunMode(str, Enum):
     ANALYZE_REVIEW = "analyze_review"
 
 
-class TenantInfo(BaseModel):
+@dataclass
+class TenantInfo:
     """Multi-tenant identification — populated by SaaS or CLI."""
 
     org_id: str = ""
@@ -40,7 +40,8 @@ class TenantInfo(BaseModel):
     project_id: str = ""
 
 
-class PlanLimits(BaseModel):
+@dataclass
+class PlanLimits:
     """Usage limits per plan tier."""
 
     plan: Plan = Plan.FREE
@@ -55,7 +56,7 @@ class PlanLimits(BaseModel):
         if plan == Plan.PRO:
             return cls(
                 plan=plan,
-                max_tests_per_month=-1,  # unlimited
+                max_tests_per_month=-1,
                 max_repos=-1,
                 ci_cd_enabled=True,
                 cross_project_learning=True,
@@ -73,7 +74,8 @@ class PlanLimits(BaseModel):
         return cls()
 
 
-class AIConfig(BaseModel):
+@dataclass
+class AIConfig:
     """AI provider configuration."""
 
     provider: AIProvider = AIProvider.AUTO
@@ -82,27 +84,28 @@ class AIConfig(BaseModel):
     base_url: str = ""
     temperature: float = 0.1
     max_tokens: int = 4096
-    use_saas_proxy: bool = False  # True = use our API key via SaaS
+    use_saas_proxy: bool = False
 
 
-class ForgeConfig(BaseModel):
+@dataclass
+class ForgeConfig:
     """Top-level engine configuration."""
 
     # Project
-    project_path: Path = Field(default_factory=lambda: Path("."))
+    project_path: Path = field(default_factory=lambda: Path("."))
     target_coverage: float = 90.0
     max_iterations: int = 10
     mode: RunMode = RunMode.FULL
-    target_files: list[str] = Field(default_factory=list)
+    target_files: list[str] = field(default_factory=list)
 
     # AI
-    ai: AIConfig = Field(default_factory=AIConfig)
+    ai: AIConfig = field(default_factory=AIConfig)
 
     # Tenant
-    tenant: TenantInfo = Field(default_factory=TenantInfo)
+    tenant: TenantInfo = field(default_factory=TenantInfo)
 
     # Plan
-    limits: PlanLimits = Field(default_factory=PlanLimits)
+    limits: PlanLimits = field(default_factory=PlanLimits)
 
     # Engine
     central_agent_path: str = ""
@@ -111,5 +114,5 @@ class ForgeConfig(BaseModel):
     prompts_dir: str = ".github/prompts"
 
     # SaaS
-    saas_api_url: str = "https://api.theswitchcompany.online"
+    saas_api_url: str = "https://theswitchcompany.online"
     auth_token: str = ""

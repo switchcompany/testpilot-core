@@ -1,18 +1,62 @@
-"""Structured AI outputs using instructor + pydantic."""
+"""Structured AI outputs using JSON mode + dataclass parsing."""
 
 from __future__ import annotations
 
-from typing import Any, TypeVar
-
-import instructor
-import litellm
-from pydantic import BaseModel
+import dataclasses
+import json
+from typing import Any, TypeVar, get_type_hints
 
 from forge_core.models.config import AIConfig
-from forge_core.ai.provider import _resolve_model
+from forge_core.ai.provider import complete
 from forge_core.utils import logger
 
-T = TypeVar("T", bound=BaseModel)
+T = TypeVar("T")
+
+
+def _schema_from_dataclass(cls: type) -> dict[str, Any]:
+    """Generate a minimal JSON schema from a dataclass."""
+    hints = get_type_hints(cls)
+    properties: dict[str, Any] = {}
+    for f in dataclasses.fields(cls):
+        hint = hints.get(f.name, str)
+        hint_str = str(hint)
+        if hint_str.startswith("list") or "list[" in hint_str.lower():
+            properties[f.name] = {"type": "array"}
+        elif hint_str.startswith("dict") or "dict[" in hint_str.lower():
+            properties[f.name] = {"type": "object"}
+        elif hint in (int,) or "int" in hint_str:
+            properties[f.name] = {"type": "integer"}
+        elif hint in (float,):
+            properties[f.name] = {"type": "number"}
+        elif hint in (bool,):
+            properties[f.name] = {"type": "boolean"}
+        else:
+            properties[f.name] = {"type": "string"}
+    return {"type": "object", "properties": properties}
+
+
+def _dict_to_dataclass(cls: type[T], data: dict[str, Any]) -> T:
+    """Recursively convert a dict to a dataclass, handling nested dataclasses."""
+    hints = get_type_hints(cls)
+    kwargs: dict[str, Any] = {}
+    for f in dataclasses.fields(cls):
+        if f.name not in data:
+            continue
+        val = data[f.name]
+        hint = hints.get(f.name)
+        # Check if the hint is itself a dataclass
+        if dataclasses.is_dataclass(hint) and isinstance(val, dict):
+            kwargs[f.name] = _dict_to_dataclass(hint, val)
+        elif isinstance(val, list) and val:
+            # Try to detect nested dataclass in list
+            inner = getattr(hint, "__args__", [None])[0] if hasattr(hint, "__args__") else None
+            if inner and dataclasses.is_dataclass(inner):
+                kwargs[f.name] = [_dict_to_dataclass(inner, item) if isinstance(item, dict) else item for item in val]
+            else:
+                kwargs[f.name] = val
+        else:
+            kwargs[f.name] = val
+    return cls(**kwargs)
 
 
 def extract(
@@ -22,47 +66,43 @@ def extract(
     response_model: type[T],
     max_retries: int = 2,
 ) -> T:
-    """Extract structured data from AI using instructor.
+    """Extract structured data from AI using JSON mode + dataclass.
 
-    Forces the AI to return data matching a pydantic model schema.
+    Forces the AI to return data matching a dataclass schema.
     Retries on validation failure.
-
-    Args:
-        config: AI provider configuration.
-        system_prompt: System-level instructions.
-        user_prompt: User message with code/context.
-        response_model: Pydantic model class to extract.
-        max_retries: Number of retries on validation failure.
-
-    Returns:
-        An instance of response_model populated by the AI.
     """
-    model = _resolve_model(config)
+    schema = _schema_from_dataclass(response_model)
+    structured_prompt = (
+        f"{system_prompt}\n\n"
+        f"You MUST respond with valid JSON matching this schema:\n"
+        f"```json\n{json.dumps(schema, indent=2)}\n```\n"
+        f"Respond ONLY with the JSON object, no other text."
+    )
 
-    client = instructor.from_litellm(litellm.completion)
+    logger.info(f"Structured extraction → {config.model} → {response_model.__name__}")
 
-    kwargs: dict[str, Any] = {
-        "model": model,
-        "messages": [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt},
-        ],
-        "temperature": config.temperature,
-        "max_retries": max_retries,
-        "response_model": response_model,
-    }
+    last_error = None
+    for attempt in range(max_retries + 1):
+        try:
+            raw = complete(config, structured_prompt, user_prompt, json_mode=True)
+            # Strip markdown code fences if present
+            cleaned = raw.strip()
+            if cleaned.startswith("```"):
+                cleaned = cleaned.split("\n", 1)[1] if "\n" in cleaned else cleaned
+                if cleaned.endswith("```"):
+                    cleaned = cleaned[:-3]
+                cleaned = cleaned.strip()
 
-    if config.api_key:
-        kwargs["api_key"] = config.api_key
-    if config.base_url:
-        kwargs["api_base"] = config.base_url
+            data = json.loads(cleaned)
+            result = _dict_to_dataclass(response_model, data)
+            logger.success(f"Extracted {response_model.__name__} successfully")
+            return result
+        except Exception as e:
+            last_error = e
+            if attempt < max_retries:
+                logger.warn(f"Extraction attempt {attempt + 1} failed: {e}, retrying...")
+            continue
 
-    logger.info(f"Structured extraction → {model} → {response_model.__name__}")
-
-    try:
-        result = client.chat.completions.create(**kwargs)
-        logger.success(f"Extracted {response_model.__name__} successfully")
-        return result
-    except Exception as e:
-        logger.error(f"Structured extraction failed: {e}")
-        raise
+    raise RuntimeError(
+        f"Structured extraction failed after {max_retries + 1} attempts: {last_error}"
+    )

@@ -35,13 +35,19 @@ def fix_compilation_errors(
 
         logger.info(f"Compile-fix attempt {attempt}/{max_attempts}")
 
-        # Ask AI to fix
+        # Ask AI to fix with classified error context
+        classified = classify_compile_errors(result.output)
+        hints = "\n".join(
+            f"- [{e['type']}] {e['fix_hint']}" for e in classified[:10]
+        ) if classified else "No specific error classification available."
+
         response = complete(
             config=config.ai,
             system_prompt=(
                 "Fix the compilation errors in these test files. "
                 "Return JSON with fixed_files: [{path, content}]. "
-                "Only fix imports, types, and syntax — don't change test logic."
+                "Only fix imports, types, and syntax — don't change test logic.\n\n"
+                "Error hints:\n" + hints
             ),
             user_prompt=f"Compilation errors:\n```\n{result.output[:4000]}\n```",
             json_mode=True,
@@ -75,5 +81,69 @@ def _is_compile_error(output: str) -> bool:
         "error TS",
         "cannot resolve",
         "does not exist",
+        # Kotlin @Serializable synthetic constructor errors
+        "serializationConstructorMarker",
+        "seen0",
+        "None of the following candidates",
+        # Kotlin DTO drift errors
+        "No value passed for parameter",
+        "Type mismatch: inferred type",
     ]
     return any(indicator.lower() in output.lower() for indicator in compile_indicators)
+
+
+def classify_compile_errors(output: str) -> list[dict[str, str]]:
+    """Classify compilation errors for targeted fixing.
+
+    Returns a list of {type, class_name, detail} dicts to guide the AI fixer.
+    Avoids wasting AI tokens on generic "fix everything" prompts.
+    """
+    errors: list[dict[str, str]] = []
+    lines = output.split("\n")
+
+    for line in lines:
+        lower = line.lower()
+
+        if "serializationconstructormarker" in lower or "seen0" in lower:
+            # @Serializable DTO — must use Json.decodeFromString
+            errors.append({
+                "type": "serializable_dto",
+                "detail": line.strip(),
+                "fix_hint": (
+                    "This DTO uses @Serializable with a synthetic constructor. "
+                    "Replace direct constructor call with: "
+                    'Json.decodeFromString<DtoType>("""{"field": "value"}""")'
+                ),
+            })
+
+        elif "no value passed for parameter" in lower:
+            # Missing required DTO parameter
+            errors.append({
+                "type": "missing_param",
+                "detail": line.strip(),
+                "fix_hint": "Add the missing required parameter to the constructor call.",
+            })
+
+        elif "unresolved reference" in lower:
+            # Wrong class name or missing import
+            errors.append({
+                "type": "unresolved_reference",
+                "detail": line.strip(),
+                "fix_hint": (
+                    "Check for namespace collisions (same DTO name in v1/v2/v3). "
+                    "Use import alias or fully qualified name."
+                ),
+            })
+
+        elif "type mismatch" in lower:
+            # Wrong type (e.g., String vs Double across DTO versions)
+            errors.append({
+                "type": "type_mismatch",
+                "detail": line.strip(),
+                "fix_hint": (
+                    "Check DTO version — same field may have different types in v1 vs v2. "
+                    "E.g., promotionSavings is String? in v1 but Double? in v2."
+                ),
+            })
+
+    return errors

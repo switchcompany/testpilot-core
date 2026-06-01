@@ -1,28 +1,86 @@
-"""LiteLLM-based AI provider — unified interface for 100+ models."""
+"""AI provider — raw httpx calls, zero native dependencies."""
 
 from __future__ import annotations
 
+import json
+import os
 from typing import Any
 
-import litellm
+import httpx
 
 from forge_core.models.config import AIConfig, AIProvider
 from forge_core.utils import logger
 from forge_core.utils.tokens import count_tokens
 
-# Suppress LiteLLM's verbose logging
-litellm.suppress_debug_info = True
+_TIMEOUT = httpx.Timeout(120.0, connect=10.0)
+
+
+def _get_api_url(config: AIConfig) -> str:
+    """Resolve the API base URL."""
+    if config.base_url:
+        return config.base_url.rstrip("/")
+    if config.provider == AIProvider.ANTHROPIC:
+        return "https://api.anthropic.com/v1"
+    if config.provider == AIProvider.OLLAMA:
+        return "http://localhost:11434/v1"
+    if config.provider == AIProvider.AZURE:
+        return (os.environ.get("AZURE_OPENAI_ENDPOINT", "")).rstrip("/")
+    return "https://api.openai.com/v1"
+
+
+def _get_api_key(config: AIConfig) -> str:
+    """Resolve the API key."""
+    if config.api_key:
+        return config.api_key
+    if config.provider == AIProvider.ANTHROPIC:
+        return os.environ.get("ANTHROPIC_API_KEY", "")
+    if config.provider == AIProvider.AZURE:
+        return os.environ.get("AZURE_OPENAI_API_KEY", "")
+    if config.provider == AIProvider.OLLAMA:
+        return "ollama"
+    return os.environ.get("OPENAI_API_KEY", "")
 
 
 def _resolve_model(config: AIConfig) -> str:
-    """Resolve the model string for LiteLLM based on provider."""
-    if config.provider == AIProvider.OLLAMA:
-        return f"ollama/{config.model}"
-    if config.provider == AIProvider.AZURE:
-        return f"azure/{config.model}"
-    if config.provider == AIProvider.BEDROCK:
-        return f"bedrock/{config.model}"
+    """Resolve the model name."""
     return config.model
+
+
+def _call_chat_api(
+    config: AIConfig,
+    model: str,
+    messages: list[dict[str, str]],
+    temperature: float,
+    max_tokens: int,
+    json_mode: bool = False,
+) -> str:
+    """Make a raw HTTP POST to the chat completions endpoint."""
+    base_url = _get_api_url(config)
+    api_key = _get_api_key(config)
+
+    body: dict[str, Any] = {
+        "model": model,
+        "messages": messages,
+        "temperature": temperature,
+        "max_tokens": max_tokens,
+    }
+    if json_mode:
+        body["response_format"] = {"type": "json_object"}
+
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {api_key}",
+    }
+
+    resp = httpx.post(
+        f"{base_url}/chat/completions",
+        json=body,
+        headers=headers,
+        timeout=_TIMEOUT,
+    )
+    resp.raise_for_status()
+    data = resp.json()
+    return data["choices"][0]["message"]["content"] or ""
 
 
 def complete(
@@ -32,49 +90,23 @@ def complete(
     json_mode: bool = False,
     max_tokens: int | None = None,
 ) -> str:
-    """Send a completion request to the configured AI provider.
-
-    Args:
-        config: AI provider configuration.
-        system_prompt: System-level instructions.
-        user_prompt: User message with code/context.
-        json_mode: If True, request JSON response format.
-        max_tokens: Override max tokens for this call.
-
-    Returns:
-        The AI's response text.
-    """
+    """Send a completion request to the configured AI provider."""
     model = _resolve_model(config)
     messages = [
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": user_prompt},
     ]
 
-    kwargs: dict[str, Any] = {
-        "model": model,
-        "messages": messages,
-        "temperature": config.temperature,
-        "max_tokens": max_tokens or config.max_tokens,
-    }
-
-    if config.api_key:
-        kwargs["api_key"] = config.api_key
-    if config.base_url:
-        kwargs["api_base"] = config.base_url
-    if json_mode:
-        kwargs["response_format"] = {"type": "json_object"}
-
-    # Log token usage
     input_tokens = count_tokens(system_prompt + user_prompt, config.model)
     logger.info(f"AI call → {model} ({input_tokens} input tokens)")
 
     try:
-        response = litellm.completion(**kwargs)
-        content = response.choices[0].message.content or ""
-
+        content = _call_chat_api(
+            config, model, messages, config.temperature,
+            max_tokens or config.max_tokens, json_mode,
+        )
         output_tokens = count_tokens(content, config.model)
         logger.info(f"AI response ← {output_tokens} output tokens")
-
         return content
     except Exception as e:
         logger.error(f"AI call failed: {e}")
@@ -88,31 +120,20 @@ def complete_with_fallback(
     fallback_models: list[str] | None = None,
     json_mode: bool = False,
 ) -> str:
-    """Try primary model, fall back to alternatives on failure.
-
-    Useful for complex classes where one model might fail.
-    """
+    """Try primary model, fall back to alternatives on failure."""
     models = [_resolve_model(config)] + (fallback_models or [])
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": user_prompt},
+    ]
 
     last_error = None
     for model in models:
         try:
-            kwargs: dict[str, Any] = {
-                "model": model,
-                "messages": [
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt},
-                ],
-                "temperature": config.temperature,
-                "max_tokens": config.max_tokens,
-            }
-            if config.api_key:
-                kwargs["api_key"] = config.api_key
-            if json_mode:
-                kwargs["response_format"] = {"type": "json_object"}
-
-            response = litellm.completion(**kwargs)
-            return response.choices[0].message.content or ""
+            return _call_chat_api(
+                config, model, messages, config.temperature,
+                config.max_tokens, json_mode,
+            )
         except Exception as e:
             last_error = e
             logger.warn(f"Model {model} failed, trying next: {e}")

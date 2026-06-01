@@ -1,12 +1,23 @@
-"""Token counting and prompt size management using tiktoken."""
+"""Token counting and prompt size management."""
 
 from __future__ import annotations
 
-import tiktoken
+try:
+    import tiktoken
+    _HAS_TIKTOKEN = True
+except ImportError:
+    _HAS_TIKTOKEN = False
+
+
+def _estimate_tokens(text: str) -> int:
+    """Rough token estimate (~4 chars per token) when tiktoken is unavailable."""
+    return len(text) // 4 + 1
 
 
 def count_tokens(text: str, model: str = "gpt-4o") -> int:
     """Count tokens in text for a given model."""
+    if not _HAS_TIKTOKEN:
+        return _estimate_tokens(text)
     try:
         enc = tiktoken.encoding_for_model(model)
     except KeyError:
@@ -16,6 +27,9 @@ def count_tokens(text: str, model: str = "gpt-4o") -> int:
 
 def truncate_to_tokens(text: str, max_tokens: int, model: str = "gpt-4o") -> str:
     """Truncate text to fit within max_tokens."""
+    if not _HAS_TIKTOKEN:
+        char_limit = max_tokens * 4
+        return text[:char_limit] if len(text) > char_limit else text
     try:
         enc = tiktoken.encoding_for_model(model)
     except KeyError:

@@ -24,7 +24,8 @@ def verify_license(config: ForgeConfig) -> ForgeConfig:
     logger.info("Verifying license with SaaS API...")
     try:
         license_info = asyncio.run(check_license(config))
-    except Exception:
+    except Exception as e:
+        logger.warn(f"License check failed: {e}")
         license_info = {}
 
     if not license_info:
